@@ -10,18 +10,22 @@ import (
 )
 
 func main() {
+	var (
+		verbose = flag.Bool("verbose", false, "Show verbose output")
+	)
 	flag.Parse()
 
 	if flag.NArg() == 0 {
 		fmt.Fprintf(os.Stderr, "Error: URL argument required\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s <url>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [flags] <url>\n", os.Args[0])
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
 	url := flag.Arg(0)
 
 	fmt.Printf("Fetching article from: %s\n", url)
-	content, err := fetcher.FetchArticleContent(url)
+	content, err := fetcher.FetchArticleContent(url, *verbose)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

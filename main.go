@@ -39,7 +39,7 @@ func main() {
 	}
 
 	fmt.Printf("Fetching article from: %s\n", *url)
-	content, err := fetcher.FetchArticleContent(*url)
+	content, err := fetcher.FetchArticleContent(*url, *verbose)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

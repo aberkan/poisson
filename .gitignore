@@ -36,6 +36,9 @@ secrets.json
 # Secrets directory
 secrets/
 
+# Cache directory
+cache/
+
 # OS
 .DS_Store
 Thumbs.db
