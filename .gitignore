@@ -33,6 +33,9 @@ go.work
 config.ini
 secrets.json
 
+# Secrets directory
+secrets/
+
 # OS
 .DS_Store
 Thumbs.db
