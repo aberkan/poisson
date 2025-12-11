@@ -18,7 +18,7 @@ import (
 // If articleNum and totalArticles are provided (> 0), it shows article progress.
 // If showSeparator is true, it shows a separator after the results.
 func analyzeAndDisplay(
-	content, apiKey string,
+	title, content, apiKey string,
 	mode analyzer.PromptMode,
 	verbose bool,
 	articleNum, totalArticles int,
@@ -47,7 +47,7 @@ func analyzeAndDisplay(
 
 	// Analyze content
 	fmt.Println("Analyzing content with LLM...")
-	prompt, err := analyzer.GeneratePrompt(mode, content)
+	prompt, err := analyzer.GeneratePrompt(mode, title, content)
 	if err != nil {
 		return fmt.Errorf("error generating prompt: %w", err)
 	}
@@ -140,7 +140,7 @@ func main() {
 		}
 		_ = cachePath // cache path available for future use
 
-		if err := analyzeAndDisplay(page.Content, apiKeyValue, promptMode, *verbose, 0, 0, false); err != nil {
+		if err := analyzeAndDisplay(page.Title, page.Content, apiKeyValue, promptMode, *verbose, 0, 0, false); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -163,7 +163,7 @@ func main() {
 
 		for i, page := range pages {
 			showSeparator := i < len(pages)-1
-			if err := analyzeAndDisplay(page.Content, apiKeyValue, promptMode, *verbose, i+1, len(pages), showSeparator); err != nil {
+			if err := analyzeAndDisplay(page.Title, page.Content, apiKeyValue, promptMode, *verbose, i+1, len(pages), showSeparator); err != nil {
 				fmt.Fprintf(os.Stderr, "Error analyzing article %d: %v\n", i+1, err)
 				fmt.Println(strings.Repeat("-", 60))
 				if showSeparator {

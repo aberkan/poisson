@@ -8,6 +8,8 @@ Consider these factors:
 - Outlandish but plausible-sounding claims
 - Context clues that suggest it's a joke
 
+Article title: %s
+
 Article content:
 %s
 

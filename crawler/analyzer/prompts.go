@@ -36,14 +36,14 @@ func VerifyValidMode(mode string) (PromptMode, error) {
 	return promptMode, nil
 }
 
-// AddBodyToPrompt merges the body content into the prompt template.
-func AddBodyToPrompt(template, body string) string {
-	return fmt.Sprintf(template, body)
+// AddBodyToPrompt merges the title and body content into the prompt template.
+func AddBodyToPrompt(template, title, body string) string {
+	return fmt.Sprintf(template, title, body)
 }
 
 // GeneratePrompt generates a prompt by selecting the appropriate template based on mode
-// and merging it with the provided content. Content is truncated if it exceeds maxContentLength.
-func GeneratePrompt(mode PromptMode, content string) (string, error) {
+// and merging it with the provided title and content. Content is truncated if it exceeds maxContentLength.
+func GeneratePrompt(mode PromptMode, title, content string) (string, error) {
 	template, ok := PromptTemplates[mode]
 	if !ok {
 		return "", fmt.Errorf("unknown mode '%s'", mode)
@@ -55,5 +55,5 @@ func GeneratePrompt(mode PromptMode, content string) (string, error) {
 		truncatedContent = truncatedContent[:maxContentLength] + "... [content truncated]"
 	}
 
-	return AddBodyToPrompt(template, truncatedContent), nil
+	return AddBodyToPrompt(template, title, truncatedContent), nil
 }

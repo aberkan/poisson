@@ -61,31 +61,34 @@ func TestGeneratePrompt_ValidModes(t *testing.T) {
 	tests := []struct {
 		name             string
 		mode             PromptMode
+		title            string
 		content          string
 		expectedInPrompt []string
 		shouldContain    bool
 	}{
 		{
-			name:             "joke mode with content",
+			name:             "joke mode with title and content",
 			mode:             PromptModeJoke,
+			title:            "Test Article Title",
 			content:          "This is test content for joke detection.",
-			expectedInPrompt: []string{"This is test content for joke detection."},
+			expectedInPrompt: []string{"Test Article Title", "This is test content for joke detection."},
 			shouldContain:    true,
 		},
 		{
-			name:             "test mode with content",
+			name:             "test mode with title and content",
 			mode:             PromptModeTest,
+			title:            "Test Title",
 			content:          "This is test content for testing.",
-			expectedInPrompt: []string{"This is test content for testing.", "Test prompt template"},
+			expectedInPrompt: []string{"Test Title", "This is test content for testing.", "Test prompt template"},
 			shouldContain:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prompt, err := GeneratePrompt(tt.mode, tt.content)
+			prompt, err := GeneratePrompt(tt.mode, tt.title, tt.content)
 			if err != nil {
-				t.Fatalf("GeneratePrompt(%q, %q) returned error: %v", tt.mode, tt.content, err)
+				t.Fatalf("GeneratePrompt(%q, %q, %q) returned error: %v", tt.mode, tt.title, tt.content, err)
 			}
 
 			if prompt == "" {
@@ -124,7 +127,7 @@ func TestGeneratePrompt_InvalidMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prompt, err := GeneratePrompt(tt.mode, tt.content)
+			prompt, err := GeneratePrompt(tt.mode, "Test Title", tt.content)
 			if err == nil {
 				t.Errorf("GeneratePrompt(%q, %q) expected error, but got nil. Prompt: %s", tt.mode, tt.content, prompt)
 				return
@@ -141,7 +144,7 @@ func TestGeneratePrompt_ContentTruncation(t *testing.T) {
 	// Create content longer than maxContentLength
 	longContent := strings.Repeat("a", maxContentLength+1000)
 
-	prompt, err := GeneratePrompt(PromptModeJoke, longContent)
+	prompt, err := GeneratePrompt(PromptModeJoke, "Test Title", longContent)
 	if err != nil {
 		t.Fatalf("GeneratePrompt returned error: %v", err)
 	}
@@ -160,7 +163,7 @@ func TestGeneratePrompt_ContentTruncation(t *testing.T) {
 
 func TestGeneratePrompt_TestModeFormat(t *testing.T) {
 	content := "Test content here"
-	prompt, err := GeneratePrompt(PromptModeTest, content)
+	prompt, err := GeneratePrompt(PromptModeTest, "Test Title", content)
 	if err != nil {
 		t.Fatalf("GeneratePrompt returned error: %v", err)
 	}
@@ -181,20 +184,25 @@ func TestGeneratePrompt_TestModeFormat(t *testing.T) {
 }
 
 func TestAddBodyToPrompt(t *testing.T) {
-	template := "Template with content: %s"
+	template := "Template with title: %s and content: %s"
+	title := "Test Title"
 	body := "Test body content"
 
-	result := AddBodyToPrompt(template, body)
+	result := AddBodyToPrompt(template, title, body)
 
 	if !strings.Contains(result, body) {
 		t.Errorf("Expected result to contain body %q, but got: %s", body, result)
 	}
 
-	if !strings.Contains(result, "Template with content:") {
+	if !strings.Contains(result, title) {
+		t.Errorf("Expected result to contain title %q, but got: %s", title, result)
+	}
+
+	if !strings.Contains(result, "Template with title:") {
 		t.Error("Expected result to contain template text")
 	}
 
-	expected := "Template with content: Test body content"
+	expected := "Template with title: Test Title and content: Test body content"
 	if result != expected {
 		t.Errorf("Expected %q, but got %q", expected, result)
 	}

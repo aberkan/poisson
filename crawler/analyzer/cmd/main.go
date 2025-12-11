@@ -48,7 +48,8 @@ func main() {
 	fmt.Printf("Read %d characters from file\n", len(contentStr))
 	fmt.Println("Analyzing content with LLM...")
 
-	prompt, err := analyzer.GeneratePrompt(promptMode, contentStr)
+	// For file-based analyzer, no title is available - use empty string
+	prompt, err := analyzer.GeneratePrompt(promptMode, "", contentStr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
