@@ -31,3 +31,16 @@ func AnalyzeWithLLM(prompt, apiKey string) (string, error) {
 
 	return chatCompletion.Choices[0].Message.Content, nil
 }
+
+// Analyze analyzes content with LLM and returns the analysis result.
+func Analyze(title, content, apiKey string, mode PromptMode) (string, error) {
+	prompt, err := GeneratePrompt(mode, title, content)
+	if err != nil {
+		return "", fmt.Errorf("error generating prompt: %w", err)
+	}
+	analysis, err := AnalyzeWithLLM(prompt, apiKey)
+	if err != nil {
+		return "", fmt.Errorf("error analyzing content: %w", err)
+	}
+	return analysis, nil
+}

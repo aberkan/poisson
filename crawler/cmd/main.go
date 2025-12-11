@@ -13,16 +13,14 @@ import (
 	"github.com/zeace/poisson/crawler/rssfetcher"
 )
 
-// analyzeAndDisplay analyzes content with LLM and displays the results.
+// displayAnalysis displays the analysis results and related information.
 // If verbose is true, it shows a preview of the content.
 // If articleNum and totalArticles are provided (> 0), it shows article progress.
-// If showSeparator is true, it shows a separator after the results.
-func analyzeAndDisplay(
-	title, content, apiKey string,
-	mode analyzer.PromptMode,
+func displayAnalysis(
+	analysis, title, content string,
 	verbose bool,
 	articleNum, totalArticles int,
-	showSeparator bool) error {
+) {
 	// Show article progress if provided
 	if articleNum > 0 && totalArticles > 0 {
 		fmt.Printf("Article %d/%d\n", articleNum, totalArticles)
@@ -31,30 +29,17 @@ func analyzeAndDisplay(
 
 	// Show verbose preview if requested
 	if verbose {
+		fmt.Printf("Title: %s\n", title)
 		preview := content
 		previewLen := 200
 		if len(preview) > previewLen {
 			preview = preview[:previewLen] + "..."
 		}
-		if articleNum > 0 {
-			fmt.Printf("Content length: %d characters\n", len(content))
-			fmt.Printf("Preview: %s\n\n", preview)
-		} else {
-			fmt.Printf("\nFetched %d characters of content\n", len(content))
-			fmt.Printf("Preview: %s\n\n", preview)
-		}
+		fmt.Printf("Preview: %s\n\n", preview)
 	}
 
-	// Analyze content
+	// Show analyzing message
 	fmt.Println("Analyzing content with LLM...")
-	prompt, err := analyzer.GeneratePrompt(mode, title, content)
-	if err != nil {
-		return fmt.Errorf("error generating prompt: %w", err)
-	}
-	analysis, err := analyzer.AnalyzeWithLLM(prompt, apiKey)
-	if err != nil {
-		return fmt.Errorf("error analyzing content: %w", err)
-	}
 
 	// Display results
 	fmt.Println("\n" + strings.Repeat("=", 60))
@@ -62,11 +47,6 @@ func analyzeAndDisplay(
 	fmt.Println(strings.Repeat("=", 60))
 	fmt.Println(analysis)
 	fmt.Println(strings.Repeat("=", 60))
-	if showSeparator {
-		fmt.Println(strings.Repeat("-", 60))
-	}
-
-	return nil
 }
 
 func main() {
@@ -140,10 +120,12 @@ func main() {
 		}
 		_ = cachePath // cache path available for future use
 
-		if err := analyzeAndDisplay(page.Title, page.Content, apiKeyValue, promptMode, *verbose, 0, 0, false); err != nil {
+		analysis, err := analyzer.Analyze(page.Title, page.Content, apiKeyValue, promptMode)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+		displayAnalysis(analysis, page.Title, page.Content, *verbose, 0, 0)
 	} else {
 		// RSS mode - fetch articles and analyze each
 		pages, err := rssfetcher.FetchRSSArticles(ctx, *rss, *max, *verbose, datastoreClient)
@@ -163,7 +145,8 @@ func main() {
 
 		for i, page := range pages {
 			showSeparator := i < len(pages)-1
-			if err := analyzeAndDisplay(page.Title, page.Content, apiKeyValue, promptMode, *verbose, i+1, len(pages), showSeparator); err != nil {
+			analysis, err := analyzer.Analyze(page.Title, page.Content, apiKeyValue, promptMode)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error analyzing article %d: %v\n", i+1, err)
 				fmt.Println(strings.Repeat("-", 60))
 				if showSeparator {
@@ -171,6 +154,7 @@ func main() {
 				}
 				continue
 			}
+			displayAnalysis(analysis, page.Title, page.Content, *verbose, i+1, len(pages))
 		}
 	}
 }
