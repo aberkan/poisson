@@ -18,7 +18,8 @@ func main() {
 	flag.Parse()
 
 	// Validate mode
-	if !analyzer.VerifyValidMode(*mode) {
+	promptMode, err := analyzer.VerifyValidMode(*mode)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: unknown mode '%s'. Valid modes: joke\n", *mode)
 		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
 		flag.PrintDefaults()
@@ -47,7 +48,7 @@ func main() {
 	fmt.Printf("Read %d characters from file\n", len(contentStr))
 	fmt.Println("Analyzing content with LLM...")
 
-	prompt, err := analyzer.GeneratePrompt(*mode, contentStr)
+	prompt, err := analyzer.GeneratePrompt(promptMode, contentStr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

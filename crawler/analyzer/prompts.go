@@ -7,17 +7,26 @@ import (
 
 const maxContentLength = 8000
 
+type PromptMode string
+
+const (
+	PromptModeJoke PromptMode = "joke"
+)
+
 //go:embed prompts/joke.prompt.md
 var JokePromptTemplate string
 
-var PromptTemplates = map[string]string{
-	"joke": JokePromptTemplate,
+var PromptTemplates = map[PromptMode]string{
+	PromptModeJoke: JokePromptTemplate,
 }
 
 // VerifyValidMode checks if the given mode is valid (exists in PromptTemplates).
-func VerifyValidMode(mode string) bool {
-	_, ok := PromptTemplates[mode]
-	return ok
+func VerifyValidMode(mode string) (PromptMode, error) {
+	_, ok := PromptTemplates[PromptMode(mode)]
+	if !ok {
+		return "", fmt.Errorf("unknown mode '%s'", mode)
+	}
+	return PromptMode(mode), nil
 }
 
 // AddBodyToPrompt merges the body content into the prompt template.
@@ -27,7 +36,7 @@ func AddBodyToPrompt(template, body string) string {
 
 // GeneratePrompt generates a prompt by selecting the appropriate template based on mode
 // and merging it with the provided content. Content is truncated if it exceeds maxContentLength.
-func GeneratePrompt(mode, content string) (string, error) {
+func GeneratePrompt(mode PromptMode, content string) (string, error) {
 	template, ok := PromptTemplates[mode]
 	if !ok {
 		return "", fmt.Errorf("unknown mode '%s'", mode)

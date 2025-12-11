@@ -17,7 +17,12 @@ import (
 // If verbose is true, it shows a preview of the content.
 // If articleNum and totalArticles are provided (> 0), it shows article progress.
 // If showSeparator is true, it shows a separator after the results.
-func analyzeAndDisplay(content, apiKey, mode string, verbose bool, articleNum, totalArticles int, showSeparator bool) error {
+func analyzeAndDisplay(
+	content, apiKey string,
+	mode analyzer.PromptMode,
+	verbose bool,
+	articleNum, totalArticles int,
+	showSeparator bool) error {
 	// Show article progress if provided
 	if articleNum > 0 && totalArticles > 0 {
 		fmt.Printf("Article %d/%d\n", articleNum, totalArticles)
@@ -76,7 +81,8 @@ func main() {
 	flag.Parse()
 
 	// Validate mode
-	if !analyzer.VerifyValidMode(*mode) {
+	promptMode, err := analyzer.VerifyValidMode(*mode)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: unknown mode '%s'. Valid modes: joke\n", *mode)
 		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
 		flag.PrintDefaults()
@@ -134,7 +140,7 @@ func main() {
 		}
 		_ = cachePath // cache path available for future use
 
-		if err := analyzeAndDisplay(page.Content, apiKeyValue, *mode, *verbose, 0, 0, false); err != nil {
+		if err := analyzeAndDisplay(page.Content, apiKeyValue, promptMode, *verbose, 0, 0, false); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -157,7 +163,7 @@ func main() {
 
 		for i, page := range pages {
 			showSeparator := i < len(pages)-1
-			if err := analyzeAndDisplay(page.Content, apiKeyValue, *mode, *verbose, i+1, len(pages), showSeparator); err != nil {
+			if err := analyzeAndDisplay(page.Content, apiKeyValue, promptMode, *verbose, i+1, len(pages), showSeparator); err != nil {
 				fmt.Fprintf(os.Stderr, "Error analyzing article %d: %v\n", i+1, err)
 				fmt.Println(strings.Repeat("-", 60))
 				if showSeparator {
