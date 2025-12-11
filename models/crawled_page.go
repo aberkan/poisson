@@ -19,17 +19,17 @@ type CrawledPage struct {
 }
 
 // Key returns a Datastore key for a CrawledPage using the URL as the key name
-func (cp *CrawledPage) Key(kind string) *datastore.Key {
-	return datastore.NameKey(kind, cp.URL, nil)
+func MakeKey(url string) *datastore.Key {
+	return datastore.NameKey(CrawledPageKind, url, nil)
 }
 
 // GetCrawledPage retrieves a CrawledPage from Datastore by URL
 // Returns the CrawledPage and true if found, or nil and false if not found
 func GetCrawledPage(ctx context.Context, client *datastore.Client, url string) (*CrawledPage, bool, error) {
-	page := &CrawledPage{URL: url}
-	key := page.Key(CrawledPageKind)
+	var page CrawledPage
+	key := MakeKey(url)
 
-	err := client.Get(ctx, key, page)
+	err := client.Get(ctx, key, &page)
 	if err == datastore.ErrNoSuchEntity {
 		return nil, false, nil
 	}
@@ -37,7 +37,7 @@ func GetCrawledPage(ctx context.Context, client *datastore.Client, url string) (
 		return nil, false, err
 	}
 
-	return page, true, nil
+	return &page, true, nil
 }
 
 // CreateCrawledPage creates and saves a new CrawledPage to Datastore
@@ -58,7 +58,7 @@ func CreateCrawledPage(
 		DateTime: datetime,
 	}
 
-	key := page.Key(CrawledPageKind)
+	key := MakeKey(url)
 
 	_, err := client.Put(ctx, key, page)
 	if err != nil {

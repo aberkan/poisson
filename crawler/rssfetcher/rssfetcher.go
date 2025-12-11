@@ -7,7 +7,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/mmcdole/gofeed"
-	"github.com/zeace/poisson/fetcher"
+	"github.com/zeace/poisson/crawler/fetcher"
 	"github.com/zeace/poisson/models"
 )
 

@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zeace/poisson/rssfetcher"
+	"cloud.google.com/go/datastore"
+	"github.com/zeace/poisson/crawler/rssfetcher"
 )
 
 func main() {
@@ -26,8 +27,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Set up Datastore client
 	ctx := context.Background()
-	pages, err := rssfetcher.FetchRSSArticles(ctx, *url, *max, *verbose, nil)
+	projectID := "poisson-berkan"
+	datastoreClient, err := datastore.NewClient(ctx, projectID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating Datastore client: %v\n", err)
+		os.Exit(1)
+	}
+	defer datastoreClient.Close()
+
+	pages, err := rssfetcher.FetchRSSArticles(ctx, *url, *max, *verbose, datastoreClient)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
