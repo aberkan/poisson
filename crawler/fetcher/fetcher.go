@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,8 +18,7 @@ import (
 )
 
 const (
-	cacheDir        = "cache"
-	cacheExpiration = 24 * time.Hour
+	cacheDir = "cache"
 )
 
 // urlToCacheFilename converts a URL to a safe cache filename using SHA256 hash.
@@ -38,35 +38,29 @@ func getFileCachePath(url string) (string, error) {
 	return filepath.Join(cacheDir, filename), nil
 }
 
-// saveToFileCache saves content to the cache file.
-func saveToFileCache(cachePath, content string) error {
-	if err := os.WriteFile(cachePath, []byte(content), 0644); err != nil {
-		return fmt.Errorf("error writing cache file: %w", err)
-	}
-	return nil
-}
-
-// FetchArticleContent fetches and extracts text content from a given URL.
+// fetchArticleContent is an internal function that fetches and extracts text content from a given URL.
 // It checks Datastore first, and uses cached content if available.
 // If verbose is true, it prints whether it's using cached content or fetching from the URL.
-// It will save new pages to Datastore, and into a local file cache.
+// It will save new pages to Datastore, and into the provided cache writer.
+// httpClient is used for making HTTP requests.
+// cacheWriter is used for writing content to the file cache.
+// datastoreClient can be nil, in which case Datastore operations will be skipped.
 // Returns a CrawledPage, cache file path, and an error.
-func FetchArticleContent(
+func fetchArticleContent(
 	ctx context.Context,
 	url string,
 	verbose bool,
-	datastoreClient *datastore.Client,
+	datastoreClient DatastoreClient,
+	httpClient *http.Client,
+	cacheWriter io.Writer,
+	cachePath string,
 ) (*models.CrawledPage, string, error) {
 	var page *models.CrawledPage
 
-	// Get cache path (used in all return cases)
-	cachePath, err := getFileCachePath(url)
-	if err != nil {
-		return nil, "", fmt.Errorf("error getting cache path: %w", err)
-	}
-
 	// Check Datastore first
-	page, found, err := models.GetCrawledPage(ctx, datastoreClient, url)
+	var found bool
+	var err error
+	page, found, err = datastoreClient.GetCrawledPage(ctx, url)
 	if err != nil {
 		return nil, "", fmt.Errorf("error getting crawled page from Datastore: %w", err)
 	}
@@ -75,7 +69,7 @@ func FetchArticleContent(
 			fmt.Println("Using cached version from Datastore")
 		}
 		// Ensure content is also in file cache
-		if err := saveToFileCache(cachePath, page.Content); err != nil {
+		if _, err := cacheWriter.Write([]byte(page.Content)); err != nil {
 			// Log error but don't fail the request
 			if verbose {
 				fmt.Printf("Warning: failed to save to file cache: %v\n", err)
@@ -88,18 +82,15 @@ func FetchArticleContent(
 	if verbose {
 		fmt.Println("Fetching from URL...")
 	}
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("error creating request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("error fetching URL: %w", err)
 	}
@@ -145,25 +136,60 @@ func FetchArticleContent(
 		return nil, cachePath, fmt.Errorf("no content extracted from URL")
 	}
 
-	// Save to Datastore if client is provided
-	if datastoreClient != nil && ctx != nil {
-		crawlTime := time.Now()
-		var err error
-		page, err = models.CreateCrawledPage(ctx, datastoreClient, url, title, text, crawlTime)
-		if err != nil {
-			return nil, "", fmt.Errorf("error saving crawled page to Datastore: %w", err)
-		}
-		if verbose {
-			fmt.Println("Saved to Datastore")
-		}
+	// Save to Datastore
+	crawlTime := time.Now()
+	page, err = datastoreClient.CreateCrawledPage(ctx, url, title, text, crawlTime)
+	if err != nil {
+		return nil, "", fmt.Errorf("error saving crawled page to Datastore: %w", err)
+	}
+	if verbose {
+		fmt.Println("Saved to Datastore")
 	}
 
 	// Save to cache
-	if err := saveToFileCache(cachePath, text); err != nil {
+	if _, err := cacheWriter.Write([]byte(text)); err != nil {
 		// Log error but don't fail the request
 		// In a production system, you might want to log this
 		_ = err
 	}
 
 	return page, cachePath, nil
+}
+
+// FetchArticleContent fetches and extracts text content from a given URL.
+// It checks Datastore first, and uses cached content if available.
+// If verbose is true, it prints whether it's using cached content or fetching from the URL.
+// It will save new pages to Datastore, and into a local file cache.
+// Returns a CrawledPage, cache file path, and an error.
+func FetchArticleContent(
+	ctx context.Context,
+	url string,
+	verbose bool,
+	datastoreClient *datastore.Client,
+) (*models.CrawledPage, string, error) {
+	// Get cache path (used in all return cases)
+	cachePath, err := getFileCachePath(url)
+	if err != nil {
+		return nil, "", fmt.Errorf("error getting cache path: %w", err)
+	}
+
+	// Create HTTP client
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	// Open cache file for writing
+	cacheFile, err := os.OpenFile(cachePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return nil, "", fmt.Errorf("error opening cache file: %w", err)
+	}
+	defer cacheFile.Close()
+
+	// Wrap the concrete datastore client in an adapter
+	var dsClient DatastoreClient
+	if datastoreClient != nil {
+		dsClient = &datastoreClientAdapter{client: datastoreClient}
+	}
+
+	return fetchArticleContent(ctx, url, verbose, dsClient, httpClient, cacheFile, cachePath)
 }
