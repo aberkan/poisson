@@ -3,6 +3,7 @@ package analyzer
 import (
 	_ "embed"
 	"fmt"
+	"strings"
 )
 
 const maxContentLength = 8000
@@ -11,22 +12,28 @@ type PromptMode string
 
 const (
 	PromptModeJoke PromptMode = "joke"
+	PromptModeTest PromptMode = "test"
 )
 
 //go:embed prompts/joke.prompt.md
 var JokePromptTemplate string
 
+//go:embed prompts/test.prompt.md
+var TestPromptTemplate string
+
 var PromptTemplates = map[PromptMode]string{
 	PromptModeJoke: JokePromptTemplate,
+	PromptModeTest: TestPromptTemplate,
 }
 
 // VerifyValidMode checks if the given mode is valid (exists in PromptTemplates).
 func VerifyValidMode(mode string) (PromptMode, error) {
-	_, ok := PromptTemplates[PromptMode(mode)]
+	promptMode := PromptMode(strings.ToLower(mode))
+	_, ok := PromptTemplates[promptMode]
 	if !ok {
 		return "", fmt.Errorf("unknown mode '%s'", mode)
 	}
-	return PromptMode(mode), nil
+	return promptMode, nil
 }
 
 // AddBodyToPrompt merges the body content into the prompt template.
