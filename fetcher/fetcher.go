@@ -1,6 +1,7 @@
 package fetcher
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -10,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/datastore"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/zeace/poisson/models"
 )
 
 const (
@@ -25,7 +28,7 @@ func urlToCacheFilename(url string) string {
 }
 
 // getCachePath returns the full path to the cache file for a given URL.
-func getCachePath(url string) (string, error) {
+func getFileCachePath(url string) (string, error) {
 	// Ensure cache directory exists
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
 		return "", fmt.Errorf("error creating cache directory: %w", err)
@@ -35,69 +38,50 @@ func getCachePath(url string) (string, error) {
 	return filepath.Join(cacheDir, filename), nil
 }
 
-// loadFromCache attempts to load content from the cache.
-// If the cache file is older than 24 hours, it deletes the file and returns empty string (cache miss).
-func loadFromCache(url string) (string, error) {
-	cachePath, err := getCachePath(url)
-	if err != nil {
-		return "", err
-	}
-
-	// Check if file exists and get its modification time
-	fileInfo, err := os.Stat(cachePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil // Cache miss, not an error
-		}
-		return "", fmt.Errorf("error checking cache file: %w", err)
-	}
-
-	// Check if cache file is older than 24 hours
-	if time.Since(fileInfo.ModTime()) > cacheExpiration {
-		// Delete expired cache file
-		if err := os.Remove(cachePath); err != nil {
-			return "", fmt.Errorf("error deleting expired cache file: %w", err)
-		}
-		return "", nil // Cache miss due to expiration
-	}
-
-	// Cache is valid, read and return content
-	content, err := os.ReadFile(cachePath)
-	if err != nil {
-		return "", fmt.Errorf("error reading cache file: %w", err)
-	}
-
-	return string(content), nil
-}
-
-// saveToCache saves content to the cache.
-func saveToCache(url, content string) error {
-	cachePath, err := getCachePath(url)
-	if err != nil {
-		return err
-	}
-
+// saveToFileCache saves content to the cache file.
+func saveToFileCache(cachePath, content string) error {
 	if err := os.WriteFile(cachePath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("error writing cache file: %w", err)
 	}
-
 	return nil
 }
 
 // FetchArticleContent fetches and extracts text content from a given URL.
-// It checks the cache first and uses cached content if available.
+// It checks Datastore first, and uses cached content if available.
 // If verbose is true, it prints whether it's using cached content or fetching from the URL.
-func FetchArticleContent(url string, verbose bool) (string, error) {
-	// Check cache first
-	cachedContent, err := loadFromCache(url)
+// It will save new pages to Datastore, and into a local file cache.
+// Returns a CrawledPage, cache file path, and an error.
+func FetchArticleContent(
+	ctx context.Context,
+	url string,
+	verbose bool,
+	datastoreClient *datastore.Client,
+) (*models.CrawledPage, string, error) {
+	var page *models.CrawledPage
+
+	// Get cache path (used in all return cases)
+	cachePath, err := getFileCachePath(url)
 	if err != nil {
-		return "", err
+		return nil, "", fmt.Errorf("error getting cache path: %w", err)
 	}
-	if cachedContent != "" {
+
+	// Check Datastore first
+	page, found, err := models.GetCrawledPage(ctx, datastoreClient, url)
+	if err != nil {
+		return nil, "", fmt.Errorf("error getting crawled page from Datastore: %w", err)
+	}
+	if found {
 		if verbose {
-			fmt.Println("Using cached version")
+			fmt.Println("Using cached version from Datastore")
 		}
-		return cachedContent, nil
+		// Ensure content is also in file cache
+		if err := saveToFileCache(cachePath, page.Content); err != nil {
+			// Log error but don't fail the request
+			if verbose {
+				fmt.Printf("Warning: failed to save to file cache: %v\n", err)
+			}
+		}
+		return page, cachePath, nil
 	}
 
 	// Cache miss, fetch from URL
@@ -110,25 +94,29 @@ func FetchArticleContent(url string, verbose bool) (string, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", fmt.Errorf("error creating request: %w", err)
+		return nil, "", fmt.Errorf("error creating request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("error fetching URL: %w", err)
+		return nil, "", fmt.Errorf("error fetching URL: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("error parsing HTML: %w", err)
+		return nil, "", fmt.Errorf("error parsing HTML: %w", err)
 	}
+
+	// Extract title
+	title := doc.Find("title").First().Text()
+	title = strings.TrimSpace(title)
 
 	// Remove script and style elements
 	doc.Find("script, style").Remove()
@@ -154,16 +142,28 @@ func FetchArticleContent(url string, verbose bool) (string, error) {
 	text = strings.Join(strings.Fields(text), " ")
 
 	if text == "" {
-		return "", fmt.Errorf("no content extracted from URL")
+		return nil, cachePath, fmt.Errorf("no content extracted from URL")
+	}
+
+	// Save to Datastore if client is provided
+	if datastoreClient != nil && ctx != nil {
+		crawlTime := time.Now()
+		var err error
+		page, err = models.CreateCrawledPage(ctx, datastoreClient, url, title, text, crawlTime)
+		if err != nil {
+			return nil, "", fmt.Errorf("error saving crawled page to Datastore: %w", err)
+		}
+		if verbose {
+			fmt.Println("Saved to Datastore")
+		}
 	}
 
 	// Save to cache
-	if err := saveToCache(url, text); err != nil {
+	if err := saveToFileCache(cachePath, text); err != nil {
 		// Log error but don't fail the request
 		// In a production system, you might want to log this
 		_ = err
 	}
 
-	return text, nil
+	return page, cachePath, nil
 }
-

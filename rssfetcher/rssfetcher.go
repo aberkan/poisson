@@ -1,17 +1,21 @@
 package rssfetcher
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"cloud.google.com/go/datastore"
 	"github.com/mmcdole/gofeed"
 	"github.com/zeace/poisson/fetcher"
+	"github.com/zeace/poisson/models"
 )
 
 // FetchRSSArticles fetches an RSS feed from the given URL and then fetches
 // the content of the first maxArticles articles using FetchArticleContent.
-// Returns a slice of article contents and any errors encountered.
-func FetchRSSArticles(feedURL string, maxArticles int, verbose bool) ([]string, error) {
+// If datastoreClient and ctx are provided, crawled pages will be saved to Datastore.
+// Returns a slice of CrawledPage and any errors encountered.
+func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verbose bool, datastoreClient *datastore.Client) ([]*models.CrawledPage, error) {
 	if verbose {
 		fmt.Printf("Fetching RSS feed from: %s\n", feedURL)
 	}
@@ -37,7 +41,7 @@ func FetchRSSArticles(feedURL string, maxArticles int, verbose bool) ([]string, 
 		fmt.Printf("Fetching first %d articles...\n", itemsToFetch)
 	}
 
-	var articles []string
+	var pages []*models.CrawledPage
 	var errors []string
 
 	for i := 0; i < itemsToFetch; i++ {
@@ -58,7 +62,7 @@ func FetchRSSArticles(feedURL string, maxArticles int, verbose bool) ([]string, 
 			}
 		}
 
-		content, err := fetcher.FetchArticleContent(articleURL, verbose)
+		page, _, err := fetcher.FetchArticleContent(ctx, articleURL, verbose, datastoreClient)
 		if err != nil {
 			errMsg := fmt.Sprintf("error fetching article %s: %v", articleURL, err)
 			errors = append(errors, errMsg)
@@ -68,26 +72,25 @@ func FetchRSSArticles(feedURL string, maxArticles int, verbose bool) ([]string, 
 			continue
 		}
 
-		articles = append(articles, content)
+		pages = append(pages, page)
 	}
 
-	// If we got some articles but also some errors, return what we have
+	// If we got some pages but also some errors, return what we have
 	// but include error information
-	if len(articles) > 0 && len(errors) > 0 {
+	if len(pages) > 0 && len(errors) > 0 {
 		if verbose {
-			fmt.Printf("\nWarning: %d article(s) fetched successfully, but %d error(s) occurred:\n", len(articles), len(errors))
+			fmt.Printf("\nWarning: %d article(s) fetched successfully, but %d error(s) occurred:\n", len(pages), len(errors))
 			for _, errMsg := range errors {
 				fmt.Printf("  - %s\n", errMsg)
 			}
 		}
-		return articles, nil
+		return pages, nil
 	}
 
-	// If we have errors and no articles, return an error
-	if len(articles) == 0 && len(errors) > 0 {
+	// If we have errors and no pages, return an error
+	if len(pages) == 0 && len(errors) > 0 {
 		return nil, fmt.Errorf("failed to fetch any articles: %s", strings.Join(errors, "; "))
 	}
 
-	return articles, nil
+	return pages, nil
 }
-

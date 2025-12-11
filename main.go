@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 
+	"cloud.google.com/go/datastore"
 	"github.com/zeace/poisson/analyzer"
 	"github.com/zeace/poisson/fetcher"
 	"github.com/zeace/poisson/rssfetcher"
@@ -99,39 +101,50 @@ func main() {
 		}
 	}
 
+	// Set up Datastore client
+	ctx := context.Background()
+	projectID := "poisson-berkan"
+	datastoreClient, err := datastore.NewClient(ctx, projectID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	defer datastoreClient.Close()
+
 	if urlProvided {
 		// Single URL mode - existing behavior
 		fmt.Printf("Fetching article from: %s\n", *url)
-		content, err := fetcher.FetchArticleContent(*url, *verbose)
+		page, cachePath, err := fetcher.FetchArticleContent(ctx, *url, *verbose, datastoreClient)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+		_ = cachePath // cache path available for future use
 
-		if err := analyzeAndDisplay(content, apiKeyValue, *verbose, 0, 0, false); err != nil {
+		if err := analyzeAndDisplay(page.Content, apiKeyValue, *verbose, 0, 0, false); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 	} else {
 		// RSS mode - fetch articles and analyze each
-		articles, err := rssfetcher.FetchRSSArticles(*rss, *max, *verbose)
+		pages, err := rssfetcher.FetchRSSArticles(ctx, *rss, *max, *verbose, datastoreClient)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error fetching RSS articles: %v\n", err)
 			os.Exit(1)
 		}
 
-		if len(articles) == 0 {
+		if len(pages) == 0 {
 			fmt.Fprintf(os.Stderr, "Error: no articles fetched from RSS feed\n")
 			os.Exit(1)
 		}
 
 		fmt.Printf("\n%s\n", strings.Repeat("=", 60))
-		fmt.Printf("Analyzing %d article(s) from RSS feed\n", len(articles))
+		fmt.Printf("Analyzing %d article(s) from RSS feed\n", len(pages))
 		fmt.Printf("%s\n\n", strings.Repeat("=", 60))
 
-		for i, article := range articles {
-			showSeparator := i < len(articles)-1
-			if err := analyzeAndDisplay(article, apiKeyValue, *verbose, i+1, len(articles), showSeparator); err != nil {
+		for i, page := range pages {
+			showSeparator := i < len(pages)-1
+			if err := analyzeAndDisplay(page.Content, apiKeyValue, *verbose, i+1, len(pages), showSeparator); err != nil {
 				fmt.Fprintf(os.Stderr, "Error analyzing article %d: %v\n", i+1, err)
 				fmt.Println(strings.Repeat("-", 60))
 				if showSeparator {
@@ -142,4 +155,3 @@ func main() {
 		}
 	}
 }
-

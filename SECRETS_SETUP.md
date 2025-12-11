@@ -19,8 +19,6 @@ This project uses a `secrets/` directory to store sensitive information like API
    "your-api-key-here" | Out-File -FilePath secrets\openai_key -NoNewline
    ```
 
-3. The file should contain only your API key (no extra whitespace or newlines).
-
 ## Priority Order
 
 The application will look for the API key in this order:

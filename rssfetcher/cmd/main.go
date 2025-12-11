@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/zeace/poisson/rssfetcher"
 )
@@ -24,28 +26,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	articles, err := rssfetcher.FetchRSSArticles(*url, *max, *verbose)
+	ctx := context.Background()
+	pages, err := rssfetcher.FetchRSSArticles(ctx, *url, *max, *verbose, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
 	fmt.Printf("\n%s\n", strings.Repeat("=", 60))
-	fmt.Printf("Fetched %d article(s) from RSS feed\n", len(articles))
+	fmt.Printf("Fetched %d article(s) from RSS feed\n", len(pages))
 	fmt.Printf("%s\n\n", strings.Repeat("=", 60))
 
-	for i, article := range articles {
-		fmt.Printf("Article %d (%d characters):\n", i+1, len(article))
+	for i, page := range pages {
+		fmt.Printf("Article %d: %s\n", i+1, page.URL)
+		fmt.Printf("  Title: %s\n", page.Title)
+		fmt.Printf("  Crawled at: %s\n", page.DateTime.Format(time.RFC3339))
+		fmt.Printf("  Content length: %d characters\n", len(page.Content))
 		fmt.Println(strings.Repeat("-", 60))
-		preview := article
+		preview := page.Content
 		if len(preview) > 500 {
 			preview = preview[:500] + "..."
 		}
 		fmt.Println(preview)
 		fmt.Println(strings.Repeat("-", 60))
-		if i < len(articles)-1 {
+		if i < len(pages)-1 {
 			fmt.Println()
 		}
 	}
 }
-
