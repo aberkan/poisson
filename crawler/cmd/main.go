@@ -19,7 +19,7 @@ const maxContentLength = 8000
 // If verbose is true, it shows a preview of the content.
 // If articleNum and totalArticles are provided (> 0), it shows article progress.
 // If showSeparator is true, it shows a separator after the results.
-func analyzeAndDisplay(content, apiKey string, verbose bool, articleNum, totalArticles int, showSeparator bool) error {
+func analyzeAndDisplay(content, apiKey, promptTemplate string, verbose bool, articleNum, totalArticles int, showSeparator bool) error {
 	// Show article progress if provided
 	if articleNum > 0 && totalArticles > 0 {
 		fmt.Printf("Article %d/%d\n", articleNum, totalArticles)
@@ -49,7 +49,7 @@ func analyzeAndDisplay(content, apiKey string, verbose bool, articleNum, totalAr
 	if len(truncatedContent) > maxContentLength {
 		truncatedContent = truncatedContent[:maxContentLength] + "... [content truncated]"
 	}
-	prompt := analyzer.AddBodyToPrompt(analyzer.JokePromptTemplate, truncatedContent)
+	prompt := analyzer.AddBodyToPrompt(promptTemplate, truncatedContent)
 	analysis, err := analyzer.AnalyzeWithLLM(prompt, apiKey)
 	if err != nil {
 		return fmt.Errorf("error analyzing content: %w", err)
@@ -75,8 +75,19 @@ func main() {
 		url     = flag.String("url", "", "URL of the article to analyze")
 		rss     = flag.String("rss", "", "URL of the RSS feed to analyze")
 		max     = flag.Int("max", 5, "Maximum number of articles to fetch from RSS feed")
+		mode    = flag.String("mode", "joke", "Analysis mode (joke)")
 	)
 	flag.Parse()
+
+	// Get prompt template based on mode
+	var promptTemplate string
+	switch *mode {
+	case "joke":
+		promptTemplate = analyzer.JokePromptTemplate
+	default:
+		fmt.Fprintf(os.Stderr, "Error: unknown mode '%s'. Valid modes: joke\n", *mode)
+		os.Exit(1)
+	}
 
 	// Validate that exactly one of --url or --rss is provided
 	urlProvided := *url != ""
@@ -129,7 +140,7 @@ func main() {
 		}
 		_ = cachePath // cache path available for future use
 
-		if err := analyzeAndDisplay(page.Content, apiKeyValue, *verbose, 0, 0, false); err != nil {
+		if err := analyzeAndDisplay(page.Content, apiKeyValue, promptTemplate, *verbose, 0, 0, false); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -152,7 +163,7 @@ func main() {
 
 		for i, page := range pages {
 			showSeparator := i < len(pages)-1
-			if err := analyzeAndDisplay(page.Content, apiKeyValue, *verbose, i+1, len(pages), showSeparator); err != nil {
+			if err := analyzeAndDisplay(page.Content, apiKeyValue, promptTemplate, *verbose, i+1, len(pages), showSeparator); err != nil {
 				fmt.Fprintf(os.Stderr, "Error analyzing article %d: %v\n", i+1, err)
 				fmt.Println(strings.Repeat("-", 60))
 				if showSeparator {

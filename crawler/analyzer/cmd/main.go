@@ -15,6 +15,7 @@ func main() {
 	var (
 		apiKey   = flag.String("api-key", "", "OpenAI API key (or set OPENAI_API_KEY environment variable)")
 		filePath = flag.String("file", "", "Path to the file containing article content")
+		mode     = flag.String("mode", "joke", "Analysis mode (joke)")
 	)
 	flag.Parse()
 
@@ -22,6 +23,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: file path required\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
 		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	// Get prompt template based on mode
+	var promptTemplate string
+	switch *mode {
+	case "joke":
+		promptTemplate = analyzer.JokePromptTemplate
+	default:
+		fmt.Fprintf(os.Stderr, "Error: unknown mode '%s'. Valid modes: joke\n", *mode)
 		os.Exit(1)
 	}
 
@@ -45,7 +56,7 @@ func main() {
 	if len(truncatedContent) > maxContentLength {
 		truncatedContent = truncatedContent[:maxContentLength] + "... [content truncated]"
 	}
-	prompt := analyzer.AddBodyToPrompt(analyzer.JokePromptTemplate, truncatedContent)
+	prompt := analyzer.AddBodyToPrompt(promptTemplate, truncatedContent)
 	analysis, err := analyzer.AnalyzeWithLLM(prompt, apiKeyValue)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
