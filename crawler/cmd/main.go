@@ -120,7 +120,7 @@ func main() {
 		}
 		_ = cachePath // cache path available for future use
 
-		analysis, err := analyzer.Analyze(page.Title, page.Content, apiKeyValue, promptMode)
+		analysis, err := analyzer.Analyze(page, apiKeyValue, promptMode)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -145,7 +145,7 @@ func main() {
 
 		for i, page := range pages {
 			showSeparator := i < len(pages)-1
-			analysis, err := analyzer.Analyze(page.Title, page.Content, apiKeyValue, promptMode)
+			analysis, err := analyzer.Analyze(page, apiKeyValue, promptMode)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error analyzing article %d: %v\n", i+1, err)
 				fmt.Println(strings.Repeat("-", 60))

@@ -6,6 +6,7 @@ import (
 
 	openai "github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
+	"github.com/zeace/poisson/models"
 )
 
 // AnalyzeWithLLM analyzes content using an LLM with the provided prompt.
@@ -33,8 +34,8 @@ func AnalyzeWithLLM(prompt, apiKey string) (string, error) {
 }
 
 // Analyze analyzes content with LLM and returns the analysis result.
-func Analyze(title, content, apiKey string, mode PromptMode) (string, error) {
-	prompt, err := GeneratePrompt(mode, title, content)
+func Analyze(page *models.CrawledPage, apiKey string, mode PromptMode) (string, error) {
+	prompt, err := GeneratePrompt(mode, page.Title, page.Content)
 	if err != nil {
 		return "", fmt.Errorf("error generating prompt: %w", err)
 	}
