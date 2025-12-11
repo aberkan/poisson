@@ -13,6 +13,8 @@ import (
 	"github.com/zeace/poisson/crawler/rssfetcher"
 )
 
+const maxContentLength = 8000
+
 // analyzeAndDisplay analyzes content with LLM and displays the results.
 // If verbose is true, it shows a preview of the content.
 // If articleNum and totalArticles are provided (> 0), it shows article progress.
@@ -42,7 +44,13 @@ func analyzeAndDisplay(content, apiKey string, verbose bool, articleNum, totalAr
 
 	// Analyze content
 	fmt.Println("Analyzing content with LLM...")
-	analysis, err := analyzer.AnalyzeWithLLM(content, apiKey)
+	// Truncate content if too long
+	truncatedContent := content
+	if len(truncatedContent) > maxContentLength {
+		truncatedContent = truncatedContent[:maxContentLength] + "... [content truncated]"
+	}
+	prompt := analyzer.AddBodyToPrompt(analyzer.JokePromptTemplate, truncatedContent)
+	analysis, err := analyzer.AnalyzeWithLLM(prompt, apiKey)
 	if err != nil {
 		return fmt.Errorf("error analyzing content: %w", err)
 	}

@@ -9,6 +9,8 @@ import (
 	"github.com/zeace/poisson/crawler/analyzer"
 )
 
+const maxContentLength = 8000
+
 func main() {
 	var (
 		apiKey   = flag.String("api-key", "", "OpenAI API key (or set OPENAI_API_KEY environment variable)")
@@ -38,7 +40,13 @@ func main() {
 	fmt.Printf("Read %d characters from file\n", len(contentStr))
 	fmt.Println("Analyzing content with LLM...")
 
-	analysis, err := analyzer.AnalyzeWithLLM(contentStr, apiKeyValue)
+	// Truncate content if too long
+	truncatedContent := contentStr
+	if len(truncatedContent) > maxContentLength {
+		truncatedContent = truncatedContent[:maxContentLength] + "... [content truncated]"
+	}
+	prompt := analyzer.AddBodyToPrompt(analyzer.JokePromptTemplate, truncatedContent)
+	analysis, err := analyzer.AnalyzeWithLLM(prompt, apiKeyValue)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -50,4 +58,3 @@ func main() {
 	fmt.Println(analysis)
 	fmt.Println(strings.Repeat("=", 60))
 }
-
