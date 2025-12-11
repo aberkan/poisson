@@ -9,8 +9,6 @@ import (
 	"github.com/zeace/poisson/crawler/analyzer"
 )
 
-const maxContentLength = 8000
-
 func main() {
 	var (
 		apiKey   = flag.String("api-key", "", "OpenAI API key (or set OPENAI_API_KEY environment variable)")
@@ -19,20 +17,18 @@ func main() {
 	)
 	flag.Parse()
 
-	if *filePath == "" {
-		fmt.Fprintf(os.Stderr, "Error: file path required\n")
+	// Validate mode
+	if !analyzer.VerifyValidMode(*mode) {
+		fmt.Fprintf(os.Stderr, "Error: unknown mode '%s'. Valid modes: joke\n", *mode)
 		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	// Get prompt template based on mode
-	var promptTemplate string
-	switch *mode {
-	case "joke":
-		promptTemplate = analyzer.JokePromptTemplate
-	default:
-		fmt.Fprintf(os.Stderr, "Error: unknown mode '%s'. Valid modes: joke\n", *mode)
+	if *filePath == "" {
+		fmt.Fprintf(os.Stderr, "Error: file path required\n")
+		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
@@ -51,12 +47,11 @@ func main() {
 	fmt.Printf("Read %d characters from file\n", len(contentStr))
 	fmt.Println("Analyzing content with LLM...")
 
-	// Truncate content if too long
-	truncatedContent := contentStr
-	if len(truncatedContent) > maxContentLength {
-		truncatedContent = truncatedContent[:maxContentLength] + "... [content truncated]"
+	prompt, err := analyzer.GeneratePrompt(*mode, contentStr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
-	prompt := analyzer.AddBodyToPrompt(promptTemplate, truncatedContent)
 	analysis, err := analyzer.AnalyzeWithLLM(prompt, apiKeyValue)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

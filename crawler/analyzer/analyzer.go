@@ -8,11 +8,6 @@ import (
 	"github.com/openai/openai-go/v3/option"
 )
 
-// AddBodyToPrompt merges the body content into the prompt template.
-func AddBodyToPrompt(template, body string) string {
-	return fmt.Sprintf(template, body)
-}
-
 // AnalyzeWithLLM analyzes content using an LLM with the provided prompt.
 func AnalyzeWithLLM(prompt, apiKey string) (string, error) {
 
