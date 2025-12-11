@@ -1,10 +1,10 @@
-# April Fools Joke Detector
+# Joke News Article Detector
 
-A Go tool that analyzes articles to determine if they are April Fools jokes or pranks using Large Language Model (LLM) analysis.
+A Go tool that analyzes articles to determine if they are jokes or pranks using Large Language Model (LLM) analysis.  It takes a URL of an article or RSS feed and outputs the analysis.
 
 ## Features
 
-- Fetches article content from any URL
+- Fetches article content from any URL or RSS URL
 - Extracts clean text from web pages
 - Uses OpenAI's GPT-4 to analyze content for April Fools indicators
 - Provides detailed analysis with confidence levels and reasoning
@@ -14,74 +14,7 @@ A Go tool that analyzes articles to determine if they are April Fools jokes or p
 
 - Go 1.21 or higher
 - OpenAI API key
-
-## Installation
-
-1. Clone this repository:
-```bash
-git clone <your-repo-url>
-cd poisson
-```
-
-2. Install dependencies:
-```bash
-go mod download
-```
-
-3. Build the binary:
-```bash
-go build -o detector
-```
-
-Or install directly:
-```bash
-go install
-```
-
-4. Set up your OpenAI API key:
-```bash
-# On Windows (PowerShell)
-$env:OPENAI_API_KEY="your-api-key-here"
-
-# On Linux/Mac
-export OPENAI_API_KEY="your-api-key-here"
-```
-
-Or create a `.env` file (not included in repo for security):
-```
-OPENAI_API_KEY=your-api-key-here
-```
-
-## Usage
-
-### Basic Usage
-
-```bash
-./detector <article-url>
-```
-
-Or if installed via `go install`:
-```bash
-detector <article-url>
-```
-
-### With API Key as Argument
-
-```bash
-./detector -api-key your-api-key-here <article-url>
-```
-
-### Verbose Output
-
-```bash
-./detector -verbose <article-url>
-```
-
-### Example
-
-```bash
-./detector https://example.com/article
-```
+- Access to the datastore
 
 ## How It Works
 
@@ -99,22 +32,6 @@ detector <article-url>
    - Confidence level (0-100)
    - Detailed reasoning
    - Key indicators
-
-## Configuration
-
-The tool uses GPT-4 by default. You can modify the model in `main.go` by changing the `Model` field in the `OpenAIRequest` struct within the `analyzeWithLLM` function.
-
-## Limitations
-
-- Requires an active internet connection
-- Requires a valid OpenAI API key (usage incurs costs)
-- Content is truncated to 8000 characters for LLM context limits
-- Some websites may block automated requests
-- Analysis quality depends on the LLM's understanding of context
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
