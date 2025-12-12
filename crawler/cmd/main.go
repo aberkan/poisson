@@ -17,7 +17,7 @@ import (
 // If verbose is true, it shows a preview of the content.
 // If articleNum and totalArticles are provided (> 0), it shows article progress.
 func displayAnalysis(
-	analysis, title, content string,
+	analysis *analyzer.AnalysisResult, title, content string,
 	verbose bool,
 	articleNum, totalArticles int,
 ) {
@@ -45,7 +45,9 @@ func displayAnalysis(
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("ANALYSIS RESULTS")
 	fmt.Println(strings.Repeat("=", 60))
-	fmt.Println(analysis)
+	fmt.Printf("Is Joke: %t\n", analysis.IsJoke)
+	fmt.Printf("Confidence: %d\n", analysis.Confidence)
+	fmt.Printf("Reasoning: %s\n", analysis.Reasoning)
 	fmt.Println(strings.Repeat("=", 60))
 }
 

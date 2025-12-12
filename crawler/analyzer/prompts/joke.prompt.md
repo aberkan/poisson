@@ -13,8 +13,12 @@ Article title: %s
 Article content:
 %s
 
-Provide your analysis in the following format:
-- Is it a joke? (Yes/No/Uncertain)
-- Confidence level (0-100)
-- Reasoning (1 or 2 short sentences explaining your assessment)
+Provide your analysis as a JSON object with the following structure:
+{
+  "is_joke": <true or false>,
+  "confidence": <number between 0 and 100>,
+  "reasoning": "<1 or 2 short sentences explaining your assessment>"
+}
+
+Return only the JSON object, with no additional text or explanation before or after it.
 
