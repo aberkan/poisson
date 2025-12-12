@@ -114,7 +114,7 @@ func TestParseJSONResponse_WithExtraText(t *testing.T) {
 			input:   "Here is the analysis: {\"is_joke\": true, \"confidence\": 80, \"reasoning\": \"Funny\"}",
 			wantErr: false,
 			validate: func(t *testing.T, result string) {
-				var obj intermediateResult
+				var obj jokeIntermediateResult
 				if err := json.Unmarshal([]byte(result), &obj); err != nil {
 					t.Errorf("result is not valid JSON: %v", err)
 					return
@@ -129,7 +129,7 @@ func TestParseJSONResponse_WithExtraText(t *testing.T) {
 			input:   "{\"is_joke\": false, \"confidence\": 90, \"reasoning\": \"Real\"} That's my analysis.",
 			wantErr: false,
 			validate: func(t *testing.T, result string) {
-				var obj intermediateResult
+				var obj jokeIntermediateResult
 				if err := json.Unmarshal([]byte(result), &obj); err != nil {
 					t.Errorf("result is not valid JSON: %v", err)
 					return
@@ -144,7 +144,7 @@ func TestParseJSONResponse_WithExtraText(t *testing.T) {
 			input:   "Analysis result: {\"is_joke\": true, \"confidence\": 55, \"reasoning\": \"Unclear\"} End of analysis.",
 			wantErr: false,
 			validate: func(t *testing.T, result string) {
-				var obj intermediateResult
+				var obj jokeIntermediateResult
 				if err := json.Unmarshal([]byte(result), &obj); err != nil {
 					t.Errorf("result is not valid JSON: %v", err)
 					return
@@ -275,7 +275,7 @@ func TestParseJSONResponse_UnmarshalToIntermediateResult(t *testing.T) {
 				return
 			}
 
-			var intermediate intermediateResult
+			var intermediate jokeIntermediateResult
 			if err := json.Unmarshal([]byte(jsonStr), &intermediate); err != nil {
 				t.Errorf("failed to unmarshal parsed JSON: %v. JSON: %q", err, jsonStr)
 				return
@@ -371,7 +371,7 @@ func TestAnalyze_ConversionToJokePercentage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			intermediate := intermediateResult{
+			intermediate := jokeIntermediateResult{
 				IsJoke:     tt.isJoke,
 				Confidence: tt.confidence,
 				Reasoning:  tt.reasoning,
@@ -496,7 +496,7 @@ func TestParseJSONResponse_RealWorldExamples(t *testing.T) {
 }`,
 			wantErr: false,
 			check: func(t *testing.T, result string) {
-				var obj intermediateResult
+				var obj jokeIntermediateResult
 				if err := json.Unmarshal([]byte(result), &obj); err != nil {
 					t.Errorf("failed to unmarshal: %v", err)
 					return
@@ -511,7 +511,7 @@ func TestParseJSONResponse_RealWorldExamples(t *testing.T) {
 			input:   "```json\n{\n  \"is_joke\": false,\n  \"confidence\": 92,\n  \"reasoning\": \"This is a serious news article\"\n}\n```",
 			wantErr: false,
 			check: func(t *testing.T, result string) {
-				var obj intermediateResult
+				var obj jokeIntermediateResult
 				if err := json.Unmarshal([]byte(result), &obj); err != nil {
 					t.Errorf("failed to unmarshal: %v", err)
 					return

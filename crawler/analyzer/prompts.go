@@ -21,9 +21,21 @@ var JokePromptTemplate string
 //go:embed prompts/test.prompt.md
 var TestPromptTemplate string
 
-var PromptTemplates = map[PromptMode]string{
-	PromptModeJoke: JokePromptTemplate,
-	PromptModeTest: TestPromptTemplate,
+// PromptConfig holds the template and processing function for a prompt mode.
+type PromptConfig struct {
+	Template        string
+	ProcessResponse func(string) (*AnalysisResult, error)
+}
+
+var PromptTemplates = map[PromptMode]PromptConfig{
+	PromptModeJoke: {
+		Template:        JokePromptTemplate,
+		ProcessResponse: ProcessJokeResponse,
+	},
+	PromptModeTest: {
+		Template:        TestPromptTemplate,
+		ProcessResponse: ProcessTestResponse,
+	},
 }
 
 // VerifyValidMode checks if the given mode is valid (exists in PromptTemplates).
@@ -44,7 +56,7 @@ func AddBodyToPrompt(template, title, body string) string {
 // GeneratePrompt generates a prompt by selecting the appropriate template based on mode
 // and merging it with the provided title and content. Content is truncated if it exceeds maxContentLength.
 func GeneratePrompt(mode PromptMode, title, content string) (string, error) {
-	template, ok := PromptTemplates[mode]
+	config, ok := PromptTemplates[mode]
 	if !ok {
 		return "", fmt.Errorf("unknown mode '%s'", mode)
 	}
@@ -55,5 +67,5 @@ func GeneratePrompt(mode PromptMode, title, content string) (string, error) {
 		truncatedContent = truncatedContent[:maxContentLength] + "... [content truncated]"
 	}
 
-	return AddBodyToPrompt(template, title, truncatedContent), nil
+	return AddBodyToPrompt(config.Template, title, truncatedContent), nil
 }

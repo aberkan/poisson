@@ -219,14 +219,18 @@ func TestPromptTemplates_AllModesPresent(t *testing.T) {
 		}
 
 		// Verify template exists and is non-empty
-		template, exists := PromptTemplates[PromptMode(mode)]
+		config, exists := PromptTemplates[PromptMode(mode)]
 		if !exists {
 			t.Errorf("Expected PromptTemplates to contain mode %q", modeStr)
 			continue
 		}
 
-		if template == "" {
+		if config.Template == "" {
 			t.Errorf("Expected template for mode %q to be non-empty", modeStr)
+		}
+
+		if config.ProcessResponse == nil {
+			t.Errorf("Expected ProcessResponse for mode %q to be non-nil", modeStr)
 		}
 	}
 }

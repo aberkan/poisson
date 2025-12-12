@@ -2,7 +2,6 @@ package analyzer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -40,13 +39,6 @@ type AnalysisResult struct {
 	// JokePercentage is the confidence level that the content is a joke.
 	// Nil if jokiness was not analyzed.
 	JokePercentage *int `json:"joke_percentage"`
-}
-
-// intermediateResult is used to parse the LLM response before converting to AnalysisResult.
-type intermediateResult struct {
-	IsJoke     bool   `json:"is_joke"`
-	Confidence int    `json:"confidence"`
-	Reasoning  string `json:"reasoning"`
 }
 
 // parseJSONResponse extracts and parses JSON from the LLM response.
@@ -90,15 +82,12 @@ func Analyze(page *models.CrawledPage, apiKey string, mode PromptMode) (*Analysi
 		return nil, fmt.Errorf("error extracting JSON from response: %w", err)
 	}
 
-	var intermediate intermediateResult
-	if err := json.Unmarshal([]byte(jsonStr), &intermediate); err != nil {
-		return nil, fmt.Errorf("error parsing JSON: %w", err)
+	// Get processing function from prompt config
+	config, ok := PromptTemplates[mode]
+	if !ok {
+		return nil, fmt.Errorf("unknown mode: %s", mode)
 	}
 
-	// Convert to AnalysisResult
-	result := &AnalysisResult{
-		JokePercentage: &intermediate.Confidence,
-	}
-
-	return result, nil
+	// Process response using the mode-specific processing function
+	return config.ProcessResponse(jsonStr)
 }
