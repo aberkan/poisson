@@ -45,9 +45,11 @@ func displayAnalysis(
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("ANALYSIS RESULTS")
 	fmt.Println(strings.Repeat("=", 60))
-	fmt.Printf("Is Joke: %t\n", analysis.IsJoke)
-	fmt.Printf("Confidence: %d\n", analysis.Confidence)
-	fmt.Printf("Reasoning: %s\n", analysis.Reasoning)
+	if analysis.JokePercentage == nil {
+		fmt.Printf("Joke Percentage: null (no mention of jokes)\n")
+	} else {
+		fmt.Printf("Joke Percentage: %d\n", *analysis.JokePercentage)
+	}
 	fmt.Println(strings.Repeat("=", 60))
 }
 

@@ -15,8 +15,8 @@ Article content:
 
 Provide your analysis as a JSON object with the following structure:
 {
-  "is_joke": <true or false>,
-  "confidence": <number between 0 and 100>,
+  "is_joke": <true if the article is a joke/prank, false otherwise>,
+  "confidence": <number between 0 and 100 indicating confidence in your assessment>,
   "reasoning": "<1 or 2 short sentences explaining your assessment>"
 }
 

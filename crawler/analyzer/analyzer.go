@@ -37,6 +37,13 @@ func AnalyzeWithLLM(prompt, apiKey string) (string, error) {
 
 // AnalysisResult represents the parsed JSON result from the LLM analysis.
 type AnalysisResult struct {
+	// JokePercentage is the confidence level that the content is a joke.
+	// Nil if jokiness was not analyzed.
+	JokePercentage *int `json:"joke_percentage"`
+}
+
+// intermediateResult is used to parse the LLM response before converting to AnalysisResult.
+type intermediateResult struct {
 	IsJoke     bool   `json:"is_joke"`
 	Confidence int    `json:"confidence"`
 	Reasoning  string `json:"reasoning"`
@@ -83,10 +90,15 @@ func Analyze(page *models.CrawledPage, apiKey string, mode PromptMode) (*Analysi
 		return nil, fmt.Errorf("error extracting JSON from response: %w", err)
 	}
 
-	var result AnalysisResult
-	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+	var intermediate intermediateResult
+	if err := json.Unmarshal([]byte(jsonStr), &intermediate); err != nil {
 		return nil, fmt.Errorf("error parsing JSON: %w", err)
 	}
 
-	return &result, nil
+	// Convert to AnalysisResult
+	result := &AnalysisResult{
+		JokePercentage: &intermediate.Confidence,
+	}
+
+	return result, nil
 }
