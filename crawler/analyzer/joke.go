@@ -15,7 +15,7 @@ type jokeIntermediateResult struct {
 }
 
 // ProcessJokeResponse processes the JSON response from the LLM for joke mode and converts it to AnalysisResult.
-func ProcessJokeResponse(jsonStr string) (*models.AnalysisResult, error) {
+func ProcessJokeResponse(jsonStr string, fingerprint uint64) (*models.AnalysisResult, error) {
 	var intermediate jokeIntermediateResult
 	if err := json.Unmarshal([]byte(jsonStr), &intermediate); err != nil {
 		return nil, fmt.Errorf("error parsing JSON: %w", err)
@@ -36,9 +36,10 @@ func ProcessJokeResponse(jsonStr string) (*models.AnalysisResult, error) {
 
 	// Convert to AnalysisResult
 	result := &models.AnalysisResult{
-		Mode:           AnalysisModeJoke,
-		JokePercentage: &confidence,
-		JokeReasoning:  &intermediate.Reasoning,
+		Mode:              AnalysisModeJoke,
+		JokePercentage:    &confidence,
+		JokeReasoning:     &intermediate.Reasoning,
+		PromptFingerprint: fingerprint,
 	}
 
 	return result, nil

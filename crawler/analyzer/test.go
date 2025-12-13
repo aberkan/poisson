@@ -13,7 +13,7 @@ type testIntermediateResult struct {
 }
 
 // ProcessTestResponse processes the JSON response from the LLM for test mode and converts it to AnalysisResult.
-func ProcessTestResponse(jsonStr string) (*models.AnalysisResult, error) {
+func ProcessTestResponse(jsonStr string, fingerprint uint64) (*models.AnalysisResult, error) {
 	var intermediate testIntermediateResult
 	if err := json.Unmarshal([]byte(jsonStr), &intermediate); err != nil {
 		return nil, fmt.Errorf("error parsing JSON: %w", err)
@@ -21,8 +21,9 @@ func ProcessTestResponse(jsonStr string) (*models.AnalysisResult, error) {
 
 	// For test mode, we don't analyze joke percentage, so return nil
 	result := &models.AnalysisResult{
-		Mode:           AnalysisModeTest,
-		JokePercentage: nil,
+		Mode:              AnalysisModeTest,
+		JokePercentage:    nil,
+		PromptFingerprint: fingerprint,
 	}
 
 	return result, nil

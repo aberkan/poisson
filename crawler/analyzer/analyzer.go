@@ -81,6 +81,12 @@ func Analyze(page *models.CrawledPage, apiKey string, mode AnalysisMode) (*model
 		return nil, fmt.Errorf("unknown mode: %s", mode)
 	}
 
+	// Generate prompt fingerprint for this mode
+	fingerprint, err := GeneratePromptFingerprint(mode)
+	if err != nil {
+		return nil, fmt.Errorf("error generating prompt fingerprint: %w", err)
+	}
+
 	// Process response using the mode-specific processing function
-	return config.ProcessResponse(jsonStr)
+	return config.ProcessResponse(jsonStr, fingerprint)
 }
