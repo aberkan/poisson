@@ -111,7 +111,6 @@ func analyze(
 	// Save to cache
 	err = datastoreClient.WriteAnalysisResult(ctx, page.URL, result)
 	if err != nil {
-		// Log error but don't fail the request
 		fmt.Printf("Warning: error saving analysis result to cache: %v\n", err)
 		// The analysis was successful, caching is just an optimization
 	} else if verbose {

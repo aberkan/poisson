@@ -27,7 +27,7 @@ var TestPromptTemplate string
 // PromptConfig holds the template and processing function for a prompt mode.
 type PromptConfig struct {
 	Template        string
-	ProcessResponse func(string, uint64) (*models.AnalysisResult, error)
+	ProcessResponse func(string, int) (*models.AnalysisResult, error)
 }
 
 var PromptTemplates = map[AnalysisMode]PromptConfig{
@@ -56,17 +56,17 @@ func AddBodyToPrompt(template, title, body string) string {
 	return fmt.Sprintf(template, title, body)
 }
 
-// GeneratePromptFingerprint generates a uint64 fingerprint based on the template text for a given mode.
-func GeneratePromptFingerprint(mode AnalysisMode) (uint64, error) {
+// GeneratePromptFingerprint generates an int fingerprint based on the template text for a given mode.
+func GeneratePromptFingerprint(mode AnalysisMode) (int, error) {
 	config, ok := PromptTemplates[mode]
 	if !ok {
 		return 0, fmt.Errorf("unknown mode '%s'", mode)
 	}
 
-	// Use FNV-1a hash for 64-bit fingerprint
+	// Use FNV-1a hash for 64-bit fingerprint, then convert to int
 	h := fnv.New64a()
 	h.Write([]byte(config.Template))
-	return h.Sum64(), nil
+	return int(h.Sum64()), nil
 }
 
 // GeneratePrompt generates a prompt by selecting the appropriate template based on mode

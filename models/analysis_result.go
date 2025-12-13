@@ -23,8 +23,8 @@ type AnalysisResult struct {
 	// JokeReasoning is the reasoning provided by the LLM for the joke analysis.
 	// Nil if reasoning was not provided.
 	JokeReasoning *string `json:"joke_reasoning" datastore:"joke_reasoning"`
-	// PromptFingerprint is a uint64 fingerprint of the prompt template used for this analysis.
-	PromptFingerprint uint64 `json:"prompt_fingerprint" datastore:"prompt_fingerprint"`
+	// PromptFingerprint is an int fingerprint of the prompt template used for this analysis.
+	PromptFingerprint int `json:"prompt_fingerprint" datastore:"prompt_fingerprint"`
 }
 
 // normalizeURL normalizes a URL by removing the protocol (http:// or https://) and query parameters.
