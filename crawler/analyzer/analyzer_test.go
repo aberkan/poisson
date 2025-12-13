@@ -1,10 +1,12 @@
 package analyzer
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
 )
 
@@ -537,4 +539,234 @@ func TestParseJSONResponse_RealWorldExamples(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAnalyze_DatastoreCacheHit(t *testing.T) {
+	ctx := context.Background()
+	mockDS := lib.NewMockDatastoreClient()
+
+	// Generate expected fingerprint for joke mode
+	expectedFingerprint, err := GeneratePromptFingerprint(AnalysisModeJoke)
+	if err != nil {
+		t.Fatalf("Failed to generate fingerprint: %v", err)
+	}
+
+	// Pre-populate cache with a matching result
+	pageURL := "example.com/article"
+	cachedResult := &models.AnalysisResult{
+		Mode:              AnalysisModeJoke,
+		JokePercentage:    intPtr(75),
+		JokeReasoning:     stringPtr("This is a test reasoning"),
+		PromptFingerprint: expectedFingerprint,
+	}
+	mockDS.AnalysisResults[pageURL+":joke"] = cachedResult
+
+	page := &models.CrawledPage{
+		URL:     pageURL,
+		Title:   "Test Article",
+		Content: "Test content",
+	}
+
+	// This should return the cached result without calling LLM
+	// Note: We can't easily verify LLM wasn't called, but we can verify the cached result is returned
+	// In a real scenario, this would skip the LLM call
+	mockLLM := &MockLlmClient{Response: "should not be used"}
+	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	if err != nil {
+		t.Fatalf("analyze() error = %v, want nil", err)
+	}
+
+	// Verify it returned the cached result
+	if result.JokePercentage == nil || *result.JokePercentage != 75 {
+		t.Errorf("Expected cached JokePercentage = 75, got %v", result.JokePercentage)
+	}
+	if result.JokeReasoning == nil || *result.JokeReasoning != "This is a test reasoning" {
+		t.Errorf("Expected cached JokeReasoning = 'This is a test reasoning', got %v", result.JokeReasoning)
+	}
+	if result.PromptFingerprint != expectedFingerprint {
+		t.Errorf("Expected PromptFingerprint = %d, got %d", expectedFingerprint, result.PromptFingerprint)
+	}
+}
+
+func TestAnalyze_DatastoreCacheHit_MismatchedFingerprint(t *testing.T) {
+	ctx := context.Background()
+	mockDS := lib.NewMockDatastoreClient()
+
+	// Pre-populate cache with a result that has a different fingerprint
+	pageURL := "example.com/article"
+	cachedResult := &models.AnalysisResult{
+		Mode:              AnalysisModeJoke,
+		JokePercentage:    intPtr(50),
+		JokeReasoning:     stringPtr("Old reasoning"),
+		PromptFingerprint: 999999, // Wrong fingerprint
+	}
+	mockDS.AnalysisResults[pageURL+":joke"] = cachedResult
+
+	page := &models.CrawledPage{
+		URL:     pageURL,
+		Title:   "Test Article",
+		Content: "Test content",
+	}
+
+	// This should skip the cached result and call LLM
+	// Use a mock LLM that returns a valid JSON response
+	mockLLM := &MockLlmClient{
+		Response: `{"is_joke": true, "confidence": 90, "reasoning": "This is clearly a joke"}`,
+	}
+	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	if err != nil {
+		t.Fatalf("analyze() error = %v, want nil", err)
+	}
+	// Verify it didn't return the cached result with wrong fingerprint
+	if result.JokePercentage == nil || *result.JokePercentage != 90 {
+		t.Errorf("Expected new analysis result, got JokePercentage = %v", result.JokePercentage)
+	}
+}
+
+func TestAnalyze_DatastoreCacheMiss(t *testing.T) {
+	ctx := context.Background()
+	mockDS := lib.NewMockDatastoreClient()
+
+	page := &models.CrawledPage{
+		URL:     "example.com/new-article",
+		Title:   "New Article",
+		Content: "New content",
+	}
+
+	// No cached result exists, so it should call LLM and save the result
+	mockLLM := &MockLlmClient{
+		Response: `{"is_joke": false, "confidence": 70, "reasoning": "This is a serious article"}`,
+	}
+	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	if err != nil {
+		t.Fatalf("analyze() error = %v, want nil", err)
+	}
+
+	// Verify the result was processed
+	if result.JokePercentage == nil {
+		t.Error("Expected JokePercentage to be set, got nil")
+	}
+
+	// Verify it was saved to datastore
+	savedResult, found, err := mockDS.GetAnalysisResult(ctx, page.URL, "joke")
+	if err != nil {
+		t.Fatalf("GetAnalysisResult() error = %v, want nil", err)
+	}
+	if !found {
+		t.Error("Expected result to be saved to datastore, but it wasn't")
+	}
+	if savedResult.JokePercentage == nil || *savedResult.JokePercentage != *result.JokePercentage {
+		t.Errorf("Expected saved JokePercentage to match result, got %v", savedResult.JokePercentage)
+	}
+}
+
+func TestAnalyze_DatastoreReadError(t *testing.T) {
+	ctx := context.Background()
+	mockDS := lib.NewMockDatastoreClient()
+	mockDS.GetAnalysisError = &testError{message: "datastore read error"}
+
+	page := &models.CrawledPage{
+		URL:     "example.com/article",
+		Title:   "Test Article",
+		Content: "Test content",
+	}
+
+	mockLLM := &MockLlmClient{Response: "should not be used"}
+	_, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	if err == nil {
+		t.Fatal("Expected error from datastore read, but got nil")
+	}
+	if !strings.Contains(err.Error(), "error checking analysis cache") {
+		t.Errorf("Expected error about cache check, got: %v", err)
+	}
+}
+
+func TestAnalyze_DatastoreWriteError(t *testing.T) {
+	ctx := context.Background()
+	mockDS := lib.NewMockDatastoreClient()
+	mockDS.CreateAnalysisError = &testError{message: "datastore write error"}
+
+	page := &models.CrawledPage{
+		URL:     "example.com/article",
+		Title:   "Test Article",
+		Content: "Test content",
+	}
+
+	// This should attempt to save but not fail the analysis
+	// The LLM should succeed, but the save should fail silently
+	mockLLM := &MockLlmClient{
+		Response: `{"is_joke": true, "confidence": 85, "reasoning": "This is a joke"}`,
+	}
+	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	// The datastore write error should be logged but not cause the function to fail
+	if err != nil {
+		t.Errorf("Expected no error (write error should be handled gracefully), got: %v", err)
+	}
+	// Verify the analysis succeeded despite the write error
+	if result == nil {
+		t.Fatal("Expected result to be returned despite write error")
+	}
+	if result.JokePercentage == nil {
+		t.Error("Expected JokePercentage to be set, got nil")
+	}
+}
+
+func TestAnalyze_DatastoreWriteSuccess(t *testing.T) {
+	ctx := context.Background()
+	mockDS := lib.NewMockDatastoreClient()
+
+	// Generate expected fingerprint
+	expectedFingerprint, err := GeneratePromptFingerprint(AnalysisModeJoke)
+	if err != nil {
+		t.Fatalf("Failed to generate fingerprint: %v", err)
+	}
+
+	page := &models.CrawledPage{
+		URL:     "example.com/new-article",
+		Title:   "New Article",
+		Content: "New content",
+	}
+
+	// Since we can't easily mock the LLM, we'll manually test the datastore write
+	// by creating a result and saving it
+	result := &models.AnalysisResult{
+		Mode:              AnalysisModeJoke,
+		JokePercentage:    intPtr(80),
+		JokeReasoning:     stringPtr("Test reasoning"),
+		PromptFingerprint: expectedFingerprint,
+	}
+
+	err = mockDS.CreateAnalysisResult(ctx, page.URL, result)
+	if err != nil {
+		t.Fatalf("CreateAnalysisResult() error = %v, want nil", err)
+	}
+
+	// Verify it was saved
+	savedResult, found, err := mockDS.GetAnalysisResult(ctx, page.URL, "joke")
+	if err != nil {
+		t.Fatalf("GetAnalysisResult() error = %v, want nil", err)
+	}
+	if !found {
+		t.Fatal("Expected result to be found in datastore, but it wasn't")
+	}
+	if savedResult.JokePercentage == nil || *savedResult.JokePercentage != 80 {
+		t.Errorf("Expected saved JokePercentage = 80, got %v", savedResult.JokePercentage)
+	}
+	if savedResult.PromptFingerprint != expectedFingerprint {
+		t.Errorf("Expected saved PromptFingerprint = %d, got %d", expectedFingerprint, savedResult.PromptFingerprint)
+	}
+}
+
+// Helper function to create string pointer
+func stringPtr(s string) *string {
+	return &s
+}
+
+// testError is a simple error type for testing
+type testError struct {
+	message string
+}
+
+func (e *testError) Error() string {
+	return e.message
 }

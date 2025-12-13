@@ -6,34 +6,16 @@ import (
 	"strings"
 
 	"cloud.google.com/go/datastore"
-	openai "github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
 	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
 )
 
 // AnalyzeWithLLM analyzes content using an LLM with the provided prompt.
+// Deprecated: Use LlmClient interface instead. This function is kept for backward compatibility.
 func AnalyzeWithLLM(prompt, apiKey string) (string, error) {
-
-	client := openai.NewClient(option.WithAPIKey(apiKey))
 	ctx := context.Background()
-
-	chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.UserMessage(prompt),
-		},
-		Model: openai.ChatModelGPT4o,
-	})
-
-	if err != nil {
-		return "", fmt.Errorf("error calling OpenAI API: %w", err)
-	}
-
-	if len(chatCompletion.Choices) == 0 {
-		return "", fmt.Errorf("no choices in OpenAI response: %v", chatCompletion)
-	}
-
-	return chatCompletion.Choices[0].Message.Content, nil
+	client := NewGptLlmClient(apiKey)
+	return client.Analyze(ctx, prompt)
 }
 
 // parseJSONResponse extracts and parses JSON from the LLM response.
@@ -65,7 +47,7 @@ func parseJSONResponse(response string) (string, error) {
 func analyze(
 	ctx context.Context,
 	page *models.CrawledPage,
-	apiKey string,
+	llmClient LlmClient,
 	mode AnalysisMode,
 	datastoreClient lib.DatastoreClient,
 ) (*models.AnalysisResult, error) {
@@ -93,7 +75,7 @@ func analyze(
 	if err != nil {
 		return nil, fmt.Errorf("error generating prompt: %w", err)
 	}
-	rawResponse, err := AnalyzeWithLLM(prompt, apiKey)
+	rawResponse, err := llmClient.Analyze(ctx, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("error analyzing content: %w", err)
 	}
@@ -140,5 +122,6 @@ func Analyze(
 	if datastoreClient != nil {
 		dsClient = lib.NewDatastoreClient(datastoreClient)
 	}
-	return analyze(ctx, page, apiKey, mode, dsClient)
+	llmClient := NewGptLlmClient(apiKey)
+	return analyze(ctx, page, llmClient, mode, dsClient)
 }
