@@ -1,0 +1,14 @@
+.git
+.gitignore
+*.md
+cache/
+secrets/
+*.test
+*.test.exe
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+

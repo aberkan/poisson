@@ -18,19 +18,21 @@ import (
 // If verbose is true, it shows a preview of the content.
 // If articleNum and totalArticles are provided (> 0), it shows article progress.
 func displayAnalysis(
-	analysis *models.AnalysisResult, title, content string,
+	analysis *models.AnalysisResult, title, url, content string,
 	verbose bool,
 	articleNum, totalArticles int,
 ) {
 	// Show article progress if provided
 	if articleNum > 0 && totalArticles > 0 {
+		fmt.Println()
+		fmt.Println(strings.Repeat("-", 120))
 		fmt.Printf("Article %d/%d\n", articleNum, totalArticles)
-		fmt.Println(strings.Repeat("-", 60))
 	}
 
 	// Show verbose preview if requested
 	if verbose {
 		fmt.Printf("Title: %s\n", title)
+		fmt.Printf("URL: %s\n", url)
 		preview := content
 		previewLen := 200
 		if len(preview) > previewLen {
@@ -133,7 +135,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		displayAnalysis(analysis, page.Title, page.Content, *verbose, 0, 0)
+		displayAnalysis(analysis, page.Title, page.URL, page.Content, *verbose, 0, 0)
 	} else {
 		// RSS mode - fetch articles and analyze each
 		pages, err := rssfetcher.FetchRSSArticles(ctx, *rss, *max, *verbose, datastoreClient)
@@ -156,13 +158,13 @@ func main() {
 			analysis, err := analyzer.Analyze(ctx, page, apiKeyValue, promptMode, datastoreClient, *verbose)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error analyzing article %d: %v\n", i+1, err)
-				fmt.Println(strings.Repeat("-", 60))
+				fmt.Println(strings.Repeat("-", 120))
 				if showSeparator {
 					fmt.Println()
 				}
 				continue
 			}
-			displayAnalysis(analysis, page.Title, page.Content, *verbose, i+1, len(pages))
+			displayAnalysis(analysis, page.Title, page.URL, page.Content, *verbose, i+1, len(pages))
 		}
 	}
 }
