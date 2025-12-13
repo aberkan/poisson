@@ -23,6 +23,11 @@ func ProcessJokeResponse(jsonStr string) (*models.AnalysisResult, error) {
 
 	// Ensure confidence is between 0 and 100
 	confidence := intermediate.Confidence
+	// If it's not a joke, invert the confidence
+	if !intermediate.IsJoke {
+		confidence = 100 - intermediate.Confidence
+	}
+
 	if confidence < 0 {
 		confidence = 0
 	} else if confidence > 100 {
@@ -33,6 +38,7 @@ func ProcessJokeResponse(jsonStr string) (*models.AnalysisResult, error) {
 	result := &models.AnalysisResult{
 		Mode:           AnalysisModeJoke,
 		JokePercentage: &confidence,
+		JokeReasoning:  &intermediate.Reasoning,
 	}
 
 	return result, nil

@@ -19,6 +19,9 @@ type AnalysisResult struct {
 	// JokePercentage is the confidence level that the content is a joke.
 	// Nil if jokiness was not analyzed.
 	JokePercentage *int `json:"joke_percentage" datastore:"joke_percentage"`
+	// JokeReasoning is the reasoning provided by the LLM for the joke analysis.
+	// Nil if reasoning was not provided.
+	JokeReasoning *string `json:"joke_reasoning" datastore:"joke_reasoning"`
 }
 
 // MakeAnalysisResultKey returns a Datastore key for an AnalysisResult using the URL and mode as the key name.
