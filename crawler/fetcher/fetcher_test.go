@@ -50,7 +50,7 @@ func TestFetchArticleContent_FromURL(t *testing.T) {
 	httpClient := &http.Client{Timeout: 5 * time.Second}
 	var cacheWriter bytes.Buffer
 	cachePath := "/test/cache/path"
-	mockDS := NewMockDatastoreClient()
+	mockDS := lib.NewMockDatastoreClient()
 
 	normalizedURL := lib.NormalizeURL(server.URL)
 	page, path, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
@@ -97,7 +97,7 @@ func TestFetchArticleContent_FromURL(t *testing.T) {
 
 func TestFetchArticleContent_FromDatastoreCache(t *testing.T) {
 	ctx := context.Background()
-	mockDS := NewMockDatastoreClient()
+	mockDS := lib.NewMockDatastoreClient()
 
 	// Pre-populate the mock Datastore with a cached page (using normalized URL)
 	normalizedURL := lib.NormalizeURL("https://example.com/article")
@@ -152,7 +152,7 @@ func TestFetchArticleContent_HTTPError(t *testing.T) {
 	httpClient := &http.Client{Timeout: 5 * time.Second}
 	var cacheWriter bytes.Buffer
 	cachePath := "/test/cache/path"
-	mockDS := NewMockDatastoreClient()
+	mockDS := lib.NewMockDatastoreClient()
 
 	normalizedURL := lib.NormalizeURL(server.URL)
 	_, _, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
@@ -189,7 +189,7 @@ func TestFetchArticleContent_FallbackToBody(t *testing.T) {
 	httpClient := &http.Client{Timeout: 5 * time.Second}
 	var cacheWriter bytes.Buffer
 	cachePath := "/test/cache/path"
-	mockDS := NewMockDatastoreClient()
+	mockDS := lib.NewMockDatastoreClient()
 
 	normalizedURL := lib.NormalizeURL(server.URL)
 	page, _, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
@@ -232,7 +232,7 @@ func TestFetchArticleContent_ArticleTag(t *testing.T) {
 	httpClient := &http.Client{Timeout: 5 * time.Second}
 	var cacheWriter bytes.Buffer
 	cachePath := "/test/cache/path"
-	mockDS := NewMockDatastoreClient()
+	mockDS := lib.NewMockDatastoreClient()
 
 	normalizedURL := lib.NormalizeURL(server.URL)
 	page, _, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
@@ -252,7 +252,7 @@ func TestFetchArticleContent_ArticleTag(t *testing.T) {
 
 func TestFetchArticleContent_DatastoreGetError(t *testing.T) {
 	ctx := context.Background()
-	mockDS := NewMockDatastoreClient()
+	mockDS := lib.NewMockDatastoreClient()
 	mockDS.GetError = errors.New("datastore connection error")
 
 	httpClient := &http.Client{Timeout: 5 * time.Second}
@@ -292,7 +292,7 @@ func TestFetchArticleContent_DatastoreCreateError(t *testing.T) {
 	defer server.Close()
 
 	ctx := context.Background()
-	mockDS := NewMockDatastoreClient()
+	mockDS := lib.NewMockDatastoreClient()
 	mockDS.CreateError = errors.New("datastore save error")
 
 	httpClient := &http.Client{Timeout: 5 * time.Second}

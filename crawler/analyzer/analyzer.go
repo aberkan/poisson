@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"cloud.google.com/go/datastore"
 	openai "github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
+	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
 )
 
@@ -58,8 +60,35 @@ func parseJSONResponse(response string) (string, error) {
 	return response[startIdx : endIdx+1], nil
 }
 
-// Analyze analyzes content with LLM and returns the parsed analysis result.
-func Analyze(page *models.CrawledPage, apiKey string, mode AnalysisMode) (*models.AnalysisResult, error) {
+// analyze is the internal function that analyzes content with LLM and returns the parsed analysis result.
+// It uses the lib.DatastoreClient interface directly.
+func analyze(
+	ctx context.Context,
+	page *models.CrawledPage,
+	apiKey string,
+	mode AnalysisMode,
+	datastoreClient lib.DatastoreClient,
+) (*models.AnalysisResult, error) {
+	// Generate prompt fingerprint for this mode
+	fingerprint, err := GeneratePromptFingerprint(mode)
+	if err != nil {
+		return nil, fmt.Errorf("error generating prompt fingerprint: %w", err)
+	}
+
+	// Check cache in datastore
+	cachedResult, found, err := datastoreClient.GetAnalysisResult(ctx, page.URL, string(mode))
+	if err != nil {
+		return nil, fmt.Errorf("error checking analysis cache: %w", err)
+	}
+	if found {
+		// Verify that the PromptFingerprint matches before using cached result
+		if cachedResult.PromptFingerprint == fingerprint {
+			return cachedResult, nil
+		}
+		// Fingerprint doesn't match, continue to analyze with LLM
+	}
+
+	// Cache miss or fingerprint mismatch, analyze with LLM
 	prompt, err := GeneratePrompt(mode, page.Title, page.Content)
 	if err != nil {
 		return nil, fmt.Errorf("error generating prompt: %w", err)
@@ -81,12 +110,35 @@ func Analyze(page *models.CrawledPage, apiKey string, mode AnalysisMode) (*model
 		return nil, fmt.Errorf("unknown mode: %s", mode)
 	}
 
-	// Generate prompt fingerprint for this mode
-	fingerprint, err := GeneratePromptFingerprint(mode)
+	// Process response using the mode-specific processing function
+	result, err := config.ProcessResponse(jsonStr, fingerprint)
 	if err != nil {
-		return nil, fmt.Errorf("error generating prompt fingerprint: %w", err)
+		return nil, err
 	}
 
-	// Process response using the mode-specific processing function
-	return config.ProcessResponse(jsonStr, fingerprint)
+	// Save to cache
+	if err := datastoreClient.CreateAnalysisResult(ctx, page.URL, result); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("error saving analysis result to cache: %v\n", err)
+		// The analysis was successful, caching is just an optimization
+	}
+
+	return result, nil
+}
+
+// Analyze analyzes content with LLM and returns the parsed analysis result.
+// If datastoreClient is provided, it will check for cached results and save new results.
+// This is the external API that takes a *datastore.Client directly.
+func Analyze(
+	ctx context.Context,
+	page *models.CrawledPage,
+	apiKey string,
+	mode AnalysisMode,
+	datastoreClient *datastore.Client,
+) (*models.AnalysisResult, error) {
+	var dsClient lib.DatastoreClient
+	if datastoreClient != nil {
+		dsClient = lib.NewDatastoreClient(datastoreClient)
+	}
+	return analyze(ctx, page, apiKey, mode, dsClient)
 }

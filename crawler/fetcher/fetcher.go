@@ -52,7 +52,7 @@ func fetchArticleContent(
 	ctx context.Context,
 	normalizedURL string,
 	verbose bool,
-	datastoreClient DatastoreClient,
+	datastoreClient lib.DatastoreClient,
 	httpClient *http.Client,
 	cacheWriter io.Writer,
 	cachePath string,
@@ -193,9 +193,9 @@ func FetchArticleContent(
 	defer cacheFile.Close()
 
 	// Wrap the concrete datastore client in an adapter
-	var dsClient DatastoreClient
+	var dsClient lib.DatastoreClient
 	if datastoreClient != nil {
-		dsClient = &datastoreClientAdapter{client: datastoreClient}
+		dsClient = lib.NewDatastoreClient(datastoreClient)
 	}
 
 	// Use normalized URL for all operations
