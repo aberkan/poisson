@@ -51,9 +51,13 @@ func MakeAnalysisResultKey(url, mode string) *datastore.Key {
 	return datastore.NameKey(AnalysisResultKind, keyName, nil)
 }
 
-// GetAnalysisResult retrieves an AnalysisResult from Datastore by URL and mode.
+// ReadAnalysisResult retrieves an AnalysisResult from Datastore by URL and mode.
 // Returns the AnalysisResult and true if found, or nil and false if not found.
-func GetAnalysisResult(ctx context.Context, client *datastore.Client, url, mode string) (*AnalysisResult, bool, error) {
+func ReadAnalysisResult(
+	ctx context.Context,
+	client *datastore.Client,
+	url, mode string,
+) (*AnalysisResult, bool, error) {
 	var result AnalysisResult
 	key := MakeAnalysisResultKey(url, mode)
 
@@ -68,8 +72,8 @@ func GetAnalysisResult(ctx context.Context, client *datastore.Client, url, mode 
 	return &result, true, nil
 }
 
-// CreateAnalysisResult creates and saves a new AnalysisResult to Datastore.
-func CreateAnalysisResult(
+// WriteAnalysisResult creates and saves a new AnalysisResult to Datastore.
+func WriteAnalysisResult(
 	ctx context.Context,
 	client *datastore.Client,
 	url string,

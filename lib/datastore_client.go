@@ -11,12 +11,12 @@ import (
 // DatastoreClient defines the interface for all Datastore operations needed by the crawler.
 type DatastoreClient interface {
 	// CrawledPage operations
-	GetCrawledPage(ctx context.Context, url string) (*models.CrawledPage, bool, error)
-	CreateCrawledPage(ctx context.Context, url, title, content string, datetime time.Time) (*models.CrawledPage, error)
+	ReadCrawledPage(ctx context.Context, url string) (*models.CrawledPage, bool, error)
+	WriteCrawledPage(ctx context.Context, url, title, content string, datetime time.Time) (*models.CrawledPage, error)
 
 	// AnalysisResult operations
-	GetAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error)
-	CreateAnalysisResult(ctx context.Context, url string, result *models.AnalysisResult) error
+	ReadAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error)
+	WriteAnalysisResult(ctx context.Context, url string, result *models.AnalysisResult) error
 }
 
 // datastoreClientAdapter wraps a *datastore.Client to implement DatastoreClient
@@ -29,29 +29,29 @@ func NewDatastoreClient(client *datastore.Client) DatastoreClient {
 	return &datastoreClientAdapter{client: client}
 }
 
-func (d *datastoreClientAdapter) GetCrawledPage(ctx context.Context, url string) (*models.CrawledPage, bool, error) {
-	return models.GetCrawledPage(ctx, d.client, url)
+func (d *datastoreClientAdapter) ReadCrawledPage(ctx context.Context, url string) (*models.CrawledPage, bool, error) {
+	return models.ReadCrawledPage(ctx, d.client, url)
 }
 
-func (d *datastoreClientAdapter) CreateCrawledPage(ctx context.Context, url, title, content string, datetime time.Time) (*models.CrawledPage, error) {
-	return models.CreateCrawledPage(ctx, d.client, url, title, content, datetime)
+func (d *datastoreClientAdapter) WriteCrawledPage(ctx context.Context, url, title, content string, datetime time.Time) (*models.CrawledPage, error) {
+	return models.WriteCrawledPage(ctx, d.client, url, title, content, datetime)
 }
 
-func (d *datastoreClientAdapter) GetAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error) {
-	return models.GetAnalysisResult(ctx, d.client, url, mode)
+func (d *datastoreClientAdapter) ReadAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error) {
+	return models.ReadAnalysisResult(ctx, d.client, url, mode)
 }
 
-func (d *datastoreClientAdapter) CreateAnalysisResult(ctx context.Context, url string, result *models.AnalysisResult) error {
-	return models.CreateAnalysisResult(ctx, d.client, url, result)
+func (d *datastoreClientAdapter) WriteAnalysisResult(ctx context.Context, url string, result *models.AnalysisResult) error {
+	return models.WriteAnalysisResult(ctx, d.client, url, result)
 }
 
 // MockDatastoreClient is a mock implementation of DatastoreClient for testing
 type MockDatastoreClient struct {
-	Pages            map[string]*models.CrawledPage
-	AnalysisResults  map[string]*models.AnalysisResult
-	GetError         error
-	CreateError      error
-	GetAnalysisError error
+	Pages               map[string]*models.CrawledPage
+	AnalysisResults     map[string]*models.AnalysisResult
+	GetError            error
+	CreateError         error
+	GetAnalysisError    error
 	CreateAnalysisError error
 }
 
@@ -63,7 +63,7 @@ func NewMockDatastoreClient() *MockDatastoreClient {
 	}
 }
 
-func (m *MockDatastoreClient) GetCrawledPage(ctx context.Context, url string) (*models.CrawledPage, bool, error) {
+func (m *MockDatastoreClient) ReadCrawledPage(ctx context.Context, url string) (*models.CrawledPage, bool, error) {
 	if m.GetError != nil {
 		return nil, false, m.GetError
 	}
@@ -73,7 +73,7 @@ func (m *MockDatastoreClient) GetCrawledPage(ctx context.Context, url string) (*
 	return nil, false, nil
 }
 
-func (m *MockDatastoreClient) CreateCrawledPage(ctx context.Context, url, title, content string, datetime time.Time) (*models.CrawledPage, error) {
+func (m *MockDatastoreClient) WriteCrawledPage(ctx context.Context, url, title, content string, datetime time.Time) (*models.CrawledPage, error) {
 	if m.CreateError != nil {
 		return nil, m.CreateError
 	}
@@ -86,7 +86,7 @@ func (m *MockDatastoreClient) CreateCrawledPage(ctx context.Context, url, title,
 	return page, nil
 }
 
-func (m *MockDatastoreClient) GetAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error) {
+func (m *MockDatastoreClient) ReadAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error) {
 	if m.GetAnalysisError != nil {
 		return nil, false, m.GetAnalysisError
 	}
@@ -97,7 +97,7 @@ func (m *MockDatastoreClient) GetAnalysisResult(ctx context.Context, url, mode s
 	return nil, false, nil
 }
 
-func (m *MockDatastoreClient) CreateAnalysisResult(ctx context.Context, url string, result *models.AnalysisResult) error {
+func (m *MockDatastoreClient) WriteAnalysisResult(ctx context.Context, url string, result *models.AnalysisResult) error {
 	if m.CreateAnalysisError != nil {
 		return m.CreateAnalysisError
 	}
@@ -105,4 +105,3 @@ func (m *MockDatastoreClient) CreateAnalysisResult(ctx context.Context, url stri
 	m.AnalysisResults[key] = result
 	return nil
 }
-

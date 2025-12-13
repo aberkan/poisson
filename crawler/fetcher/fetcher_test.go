@@ -86,7 +86,7 @@ func TestFetchArticleContent_FromURL(t *testing.T) {
 	}
 
 	// Verify page was saved to mock Datastore (using normalized URL)
-	savedPage, found, _ := mockDS.GetCrawledPage(ctx, normalizedURL)
+	savedPage, found, _ := mockDS.ReadCrawledPage(ctx, normalizedURL)
 	if !found {
 		t.Error("Expected page to be saved to Datastore")
 	}

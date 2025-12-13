@@ -62,7 +62,7 @@ func fetchArticleContent(
 	// Check Datastore first using normalized URL
 	var found bool
 	var err error
-	page, found, err = datastoreClient.GetCrawledPage(ctx, normalizedURL)
+	page, found, err = datastoreClient.ReadCrawledPage(ctx, normalizedURL)
 	if err != nil {
 		return nil, "", fmt.Errorf("error getting crawled page from Datastore: %w", err)
 	}
@@ -142,7 +142,7 @@ func fetchArticleContent(
 
 	// Save to Datastore using normalized URL
 	crawlTime := time.Now()
-	page, err = datastoreClient.CreateCrawledPage(ctx, normalizedURL, title, text, crawlTime)
+	page, err = datastoreClient.WriteCrawledPage(ctx, normalizedURL, title, text, crawlTime)
 	if err != nil {
 		return nil, "", fmt.Errorf("error saving crawled page to Datastore: %w", err)
 	}

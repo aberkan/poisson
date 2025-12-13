@@ -23,9 +23,9 @@ func MakeKey(url string) *datastore.Key {
 	return datastore.NameKey(CrawledPageKind, url, nil)
 }
 
-// GetCrawledPage retrieves a CrawledPage from Datastore by URL
+// ReadCrawledPage retrieves a CrawledPage from Datastore by URL
 // Returns the CrawledPage and true if found, or nil and false if not found
-func GetCrawledPage(ctx context.Context, client *datastore.Client, url string) (*CrawledPage, bool, error) {
+func ReadCrawledPage(ctx context.Context, client *datastore.Client, url string) (*CrawledPage, bool, error) {
 	var page CrawledPage
 	key := MakeKey(url)
 
@@ -40,13 +40,14 @@ func GetCrawledPage(ctx context.Context, client *datastore.Client, url string) (
 	return &page, true, nil
 }
 
-// CreateCrawledPage creates and saves a new CrawledPage to Datastore
+// WriteCrawledPage writes a new CrawledPage to Datastore
 // If datetime is zero, it will be set to the current time
-func CreateCrawledPage(
+func WriteCrawledPage(
 	ctx context.Context,
 	client *datastore.Client,
 	url, title, content string,
-	datetime time.Time) (*CrawledPage, error) {
+	datetime time.Time,
+) (*CrawledPage, error) {
 	if datetime.IsZero() {
 		datetime = time.Now()
 	}

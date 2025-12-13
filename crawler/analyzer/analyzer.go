@@ -50,6 +50,7 @@ func analyze(
 	llmClient LlmClient,
 	mode AnalysisMode,
 	datastoreClient lib.DatastoreClient,
+	verbose bool,
 ) (*models.AnalysisResult, error) {
 	// Generate prompt fingerprint for this mode
 	fingerprint, err := GeneratePromptFingerprint(mode)
@@ -58,19 +59,28 @@ func analyze(
 	}
 
 	// Check cache in datastore
-	cachedResult, found, err := datastoreClient.GetAnalysisResult(ctx, page.URL, string(mode))
+	cachedResult, found, err := datastoreClient.ReadAnalysisResult(ctx, page.URL, string(mode))
 	if err != nil {
 		return nil, fmt.Errorf("error checking analysis cache: %w", err)
 	}
 	if found {
 		// Verify that the PromptFingerprint matches before using cached result
 		if cachedResult.PromptFingerprint == fingerprint {
+			if verbose {
+				fmt.Println("Using cached analysis result from Datastore")
+			}
 			return cachedResult, nil
 		}
 		// Fingerprint doesn't match, continue to analyze with LLM
+		if verbose {
+			fmt.Println("Cached result has mismatched fingerprint, analyzing with LLM...")
+		}
 	}
 
 	// Cache miss or fingerprint mismatch, analyze with LLM
+	if verbose {
+		fmt.Println("Analyzing with LLM...")
+	}
 	prompt, err := GeneratePrompt(mode, page.Title, page.Content)
 	if err != nil {
 		return nil, fmt.Errorf("error generating prompt: %w", err)
@@ -99,10 +109,13 @@ func analyze(
 	}
 
 	// Save to cache
-	if err := datastoreClient.CreateAnalysisResult(ctx, page.URL, result); err != nil {
+	err = datastoreClient.WriteAnalysisResult(ctx, page.URL, result)
+	if err != nil {
 		// Log error but don't fail the request
-		fmt.Printf("error saving analysis result to cache: %v\n", err)
+		fmt.Printf("Warning: error saving analysis result to cache: %v\n", err)
 		// The analysis was successful, caching is just an optimization
+	} else if verbose {
+		fmt.Println("Saved analysis result to Datastore cache")
 	}
 
 	return result, nil
@@ -117,11 +130,12 @@ func Analyze(
 	apiKey string,
 	mode AnalysisMode,
 	datastoreClient *datastore.Client,
+	verbose bool,
 ) (*models.AnalysisResult, error) {
 	var dsClient lib.DatastoreClient
 	if datastoreClient != nil {
 		dsClient = lib.NewDatastoreClient(datastoreClient)
 	}
 	llmClient := NewGptLlmClient(apiKey)
-	return analyze(ctx, page, llmClient, mode, dsClient)
+	return analyze(ctx, page, llmClient, mode, dsClient, verbose)
 }

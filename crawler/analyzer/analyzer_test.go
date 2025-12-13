@@ -571,7 +571,7 @@ func TestAnalyze_DatastoreCacheHit(t *testing.T) {
 	// Note: We can't easily verify LLM wasn't called, but we can verify the cached result is returned
 	// In a real scenario, this would skip the LLM call
 	mockLLM := &MockLlmClient{Response: "should not be used"}
-	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS, false)
 	if err != nil {
 		t.Fatalf("analyze() error = %v, want nil", err)
 	}
@@ -613,7 +613,7 @@ func TestAnalyze_DatastoreCacheHit_MismatchedFingerprint(t *testing.T) {
 	mockLLM := &MockLlmClient{
 		Response: `{"is_joke": true, "confidence": 90, "reasoning": "This is clearly a joke"}`,
 	}
-	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS, false)
 	if err != nil {
 		t.Fatalf("analyze() error = %v, want nil", err)
 	}
@@ -637,7 +637,7 @@ func TestAnalyze_DatastoreCacheMiss(t *testing.T) {
 	mockLLM := &MockLlmClient{
 		Response: `{"is_joke": false, "confidence": 70, "reasoning": "This is a serious article"}`,
 	}
-	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS, false)
 	if err != nil {
 		t.Fatalf("analyze() error = %v, want nil", err)
 	}
@@ -648,7 +648,7 @@ func TestAnalyze_DatastoreCacheMiss(t *testing.T) {
 	}
 
 	// Verify it was saved to datastore
-	savedResult, found, err := mockDS.GetAnalysisResult(ctx, page.URL, "joke")
+	savedResult, found, err := mockDS.ReadAnalysisResult(ctx, page.URL, "joke")
 	if err != nil {
 		t.Fatalf("GetAnalysisResult() error = %v, want nil", err)
 	}
@@ -672,7 +672,7 @@ func TestAnalyze_DatastoreReadError(t *testing.T) {
 	}
 
 	mockLLM := &MockLlmClient{Response: "should not be used"}
-	_, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	_, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS, false)
 	if err == nil {
 		t.Fatal("Expected error from datastore read, but got nil")
 	}
@@ -697,7 +697,7 @@ func TestAnalyze_DatastoreWriteError(t *testing.T) {
 	mockLLM := &MockLlmClient{
 		Response: `{"is_joke": true, "confidence": 85, "reasoning": "This is a joke"}`,
 	}
-	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS)
+	result, err := analyze(ctx, page, mockLLM, AnalysisModeJoke, mockDS, false)
 	// The datastore write error should be logged but not cause the function to fail
 	if err != nil {
 		t.Errorf("Expected no error (write error should be handled gracefully), got: %v", err)
@@ -736,13 +736,13 @@ func TestAnalyze_DatastoreWriteSuccess(t *testing.T) {
 		PromptFingerprint: expectedFingerprint,
 	}
 
-	err = mockDS.CreateAnalysisResult(ctx, page.URL, result)
+	err = mockDS.WriteAnalysisResult(ctx, page.URL, result)
 	if err != nil {
 		t.Fatalf("CreateAnalysisResult() error = %v, want nil", err)
 	}
 
 	// Verify it was saved
-	savedResult, found, err := mockDS.GetAnalysisResult(ctx, page.URL, "joke")
+	savedResult, found, err := mockDS.ReadAnalysisResult(ctx, page.URL, "joke")
 	if err != nil {
 		t.Fatalf("GetAnalysisResult() error = %v, want nil", err)
 	}
