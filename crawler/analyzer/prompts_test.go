@@ -49,8 +49,8 @@ func TestVerifyValidMode(t *testing.T) {
 				if err != nil {
 					t.Errorf("VerifyValidMode(%q) returned error: %v", tt.mode, err)
 				}
-				if mode != PromptMode(strings.ToLower(tt.mode)) {
-					t.Errorf("VerifyValidMode(%q) = %v, expected %v", tt.mode, mode, PromptMode(tt.mode))
+				if mode != AnalysisMode(strings.ToLower(tt.mode)) {
+					t.Errorf("VerifyValidMode(%q) = %v, expected %v", tt.mode, mode, AnalysisMode(tt.mode))
 				}
 			}
 		})
@@ -60,7 +60,7 @@ func TestVerifyValidMode(t *testing.T) {
 func TestGeneratePrompt_ValidModes(t *testing.T) {
 	tests := []struct {
 		name             string
-		mode             PromptMode
+		mode             AnalysisMode
 		title            string
 		content          string
 		expectedInPrompt []string
@@ -68,7 +68,7 @@ func TestGeneratePrompt_ValidModes(t *testing.T) {
 	}{
 		{
 			name:             "joke mode with title and content",
-			mode:             PromptModeJoke,
+			mode:             AnalysisModeJoke,
 			title:            "Test Article Title",
 			content:          "This is test content for joke detection.",
 			expectedInPrompt: []string{"Test Article Title", "This is test content for joke detection."},
@@ -76,7 +76,7 @@ func TestGeneratePrompt_ValidModes(t *testing.T) {
 		},
 		{
 			name:             "test mode with title and content",
-			mode:             PromptModeTest,
+			mode:             AnalysisModeTest,
 			title:            "Test Title",
 			content:          "This is test content for testing.",
 			expectedInPrompt: []string{"Test Title", "This is test content for testing.", "Test prompt template"},
@@ -107,19 +107,19 @@ func TestGeneratePrompt_ValidModes(t *testing.T) {
 func TestGeneratePrompt_InvalidMode(t *testing.T) {
 	tests := []struct {
 		name        string
-		mode        PromptMode
+		mode        AnalysisMode
 		content     string
 		expectedErr string
 	}{
 		{
 			name:        "invalid mode",
-			mode:        PromptMode("invalid"),
+			mode:        AnalysisMode("invalid"),
 			content:     "some content",
 			expectedErr: "unknown mode",
 		},
 		{
 			name:        "empty mode",
-			mode:        PromptMode(""),
+			mode:        AnalysisMode(""),
 			content:     "some content",
 			expectedErr: "unknown mode",
 		},
@@ -144,7 +144,7 @@ func TestGeneratePrompt_ContentTruncation(t *testing.T) {
 	// Create content longer than maxContentLength
 	longContent := strings.Repeat("a", maxContentLength+1000)
 
-	prompt, err := GeneratePrompt(PromptModeJoke, "Test Title", longContent)
+	prompt, err := GeneratePrompt(AnalysisModeJoke, "Test Title", longContent)
 	if err != nil {
 		t.Fatalf("GeneratePrompt returned error: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestGeneratePrompt_ContentTruncation(t *testing.T) {
 
 func TestGeneratePrompt_TestModeFormat(t *testing.T) {
 	content := "Test content here"
-	prompt, err := GeneratePrompt(PromptModeTest, "Test Title", content)
+	prompt, err := GeneratePrompt(AnalysisModeTest, "Test Title", content)
 	if err != nil {
 		t.Fatalf("GeneratePrompt returned error: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestPromptTemplates_AllModesPresent(t *testing.T) {
 		}
 
 		// Verify template exists and is non-empty
-		config, exists := PromptTemplates[PromptMode(mode)]
+		config, exists := PromptTemplates[AnalysisMode(mode)]
 		if !exists {
 			t.Errorf("Expected PromptTemplates to contain mode %q", modeStr)
 			continue

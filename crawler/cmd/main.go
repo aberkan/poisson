@@ -11,13 +11,14 @@ import (
 	"github.com/zeace/poisson/crawler/analyzer"
 	"github.com/zeace/poisson/crawler/fetcher"
 	"github.com/zeace/poisson/crawler/rssfetcher"
+	"github.com/zeace/poisson/models"
 )
 
 // displayAnalysis displays the analysis results and related information.
 // If verbose is true, it shows a preview of the content.
 // If articleNum and totalArticles are provided (> 0), it shows article progress.
 func displayAnalysis(
-	analysis *analyzer.AnalysisResult, title, content string,
+	analysis *models.AnalysisResult, title, content string,
 	verbose bool,
 	articleNum, totalArticles int,
 ) {

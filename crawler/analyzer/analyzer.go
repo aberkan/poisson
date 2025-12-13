@@ -34,13 +34,6 @@ func AnalyzeWithLLM(prompt, apiKey string) (string, error) {
 	return chatCompletion.Choices[0].Message.Content, nil
 }
 
-// AnalysisResult represents the parsed JSON result from the LLM analysis.
-type AnalysisResult struct {
-	// JokePercentage is the confidence level that the content is a joke.
-	// Nil if jokiness was not analyzed.
-	JokePercentage *int `json:"joke_percentage"`
-}
-
 // parseJSONResponse extracts and parses JSON from the LLM response.
 // It handles cases where the response might be wrapped in markdown code blocks or have extra text.
 func parseJSONResponse(response string) (string, error) {
@@ -66,7 +59,7 @@ func parseJSONResponse(response string) (string, error) {
 }
 
 // Analyze analyzes content with LLM and returns the parsed analysis result.
-func Analyze(page *models.CrawledPage, apiKey string, mode PromptMode) (*AnalysisResult, error) {
+func Analyze(page *models.CrawledPage, apiKey string, mode AnalysisMode) (*models.AnalysisResult, error) {
 	prompt, err := GeneratePrompt(mode, page.Title, page.Content)
 	if err != nil {
 		return nil, fmt.Errorf("error generating prompt: %w", err)

@@ -3,6 +3,8 @@ package analyzer
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/zeace/poisson/models"
 )
 
 // jokeIntermediateResult is used to parse the LLM response for joke mode before converting to AnalysisResult.
@@ -13,7 +15,7 @@ type jokeIntermediateResult struct {
 }
 
 // ProcessJokeResponse processes the JSON response from the LLM for joke mode and converts it to AnalysisResult.
-func ProcessJokeResponse(jsonStr string) (*AnalysisResult, error) {
+func ProcessJokeResponse(jsonStr string) (*models.AnalysisResult, error) {
 	var intermediate jokeIntermediateResult
 	if err := json.Unmarshal([]byte(jsonStr), &intermediate); err != nil {
 		return nil, fmt.Errorf("error parsing JSON: %w", err)
@@ -28,7 +30,8 @@ func ProcessJokeResponse(jsonStr string) (*AnalysisResult, error) {
 	}
 
 	// Convert to AnalysisResult
-	result := &AnalysisResult{
+	result := &models.AnalysisResult{
+		Mode:           AnalysisModeJoke,
 		JokePercentage: &confidence,
 	}
 

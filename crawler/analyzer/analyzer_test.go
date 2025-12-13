@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/zeace/poisson/models"
 )
 
 func TestParseJSONResponse_PlainJSON(t *testing.T) {
@@ -377,7 +379,7 @@ func TestAnalyze_ConversionToJokePercentage(t *testing.T) {
 				Reasoning:  tt.reasoning,
 			}
 
-			result := &AnalysisResult{}
+			result := &models.AnalysisResult{}
 
 			// Replicate the conversion logic from Analyze function
 			reasoningLower := strings.ToLower(intermediate.Reasoning)
