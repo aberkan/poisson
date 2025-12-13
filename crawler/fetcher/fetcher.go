@@ -14,6 +14,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
 )
 
@@ -45,10 +46,11 @@ func getFileCachePath(url string) (string, error) {
 // httpClient is used for making HTTP requests.
 // cacheWriter is used for writing content to the file cache.
 // datastoreClient can be nil, in which case Datastore operations will be skipped.
+// normalizedURL is the normalized URL (without protocol and query params) used for Datastore operations.
 // Returns a CrawledPage, cache file path, and an error.
 func fetchArticleContent(
 	ctx context.Context,
-	url string,
+	normalizedURL string,
 	verbose bool,
 	datastoreClient DatastoreClient,
 	httpClient *http.Client,
@@ -57,10 +59,10 @@ func fetchArticleContent(
 ) (*models.CrawledPage, string, error) {
 	var page *models.CrawledPage
 
-	// Check Datastore first
+	// Check Datastore first using normalized URL
 	var found bool
 	var err error
-	page, found, err = datastoreClient.GetCrawledPage(ctx, url)
+	page, found, err = datastoreClient.GetCrawledPage(ctx, normalizedURL)
 	if err != nil {
 		return nil, "", fmt.Errorf("error getting crawled page from Datastore: %w", err)
 	}
@@ -79,11 +81,13 @@ func fetchArticleContent(
 	}
 
 	// Cache miss, fetch from URL
+	// Add protocol back for HTTP request
+	fetchURL := lib.AddProtocol(normalizedURL)
 	if verbose {
 		fmt.Println("Fetching from URL...")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fetchURL, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("error creating request: %w", err)
 	}
@@ -136,9 +140,9 @@ func fetchArticleContent(
 		return nil, cachePath, fmt.Errorf("no content extracted from URL")
 	}
 
-	// Save to Datastore
+	// Save to Datastore using normalized URL
 	crawlTime := time.Now()
-	page, err = datastoreClient.CreateCrawledPage(ctx, url, title, text, crawlTime)
+	page, err = datastoreClient.CreateCrawledPage(ctx, normalizedURL, title, text, crawlTime)
 	if err != nil {
 		return nil, "", fmt.Errorf("error saving crawled page to Datastore: %w", err)
 	}
@@ -167,8 +171,11 @@ func FetchArticleContent(
 	verbose bool,
 	datastoreClient *datastore.Client,
 ) (*models.CrawledPage, string, error) {
-	// Get cache path (used in all return cases)
-	cachePath, err := getFileCachePath(url)
+	// Normalize URL for Datastore operations (remove protocol and query params)
+	normalizedURL := lib.NormalizeURL(url)
+
+	// Get cache path (used in all return cases) - use normalized URL for cache
+	cachePath, err := getFileCachePath(normalizedURL)
 	if err != nil {
 		return nil, "", fmt.Errorf("error getting cache path: %w", err)
 	}
@@ -191,5 +198,6 @@ func FetchArticleContent(
 		dsClient = &datastoreClientAdapter{client: datastoreClient}
 	}
 
-	return fetchArticleContent(ctx, url, verbose, dsClient, httpClient, cacheFile, cachePath)
+	// Use normalized URL for all operations
+	return fetchArticleContent(ctx, normalizedURL, verbose, dsClient, httpClient, cacheFile, cachePath)
 }

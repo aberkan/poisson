@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
 )
 
@@ -51,7 +52,8 @@ func TestFetchArticleContent_FromURL(t *testing.T) {
 	cachePath := "/test/cache/path"
 	mockDS := NewMockDatastoreClient()
 
-	page, path, err := fetchArticleContent(ctx, server.URL, false, mockDS, httpClient, &cacheWriter, cachePath)
+	normalizedURL := lib.NormalizeURL(server.URL)
+	page, path, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
 
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
@@ -83,8 +85,8 @@ func TestFetchArticleContent_FromURL(t *testing.T) {
 		t.Errorf("Expected cache content to match page content, but they differ. Cache: %s, Page: %s", cachedContent, page.Content)
 	}
 
-	// Verify page was saved to mock Datastore
-	savedPage, found, _ := mockDS.GetCrawledPage(ctx, server.URL)
+	// Verify page was saved to mock Datastore (using normalized URL)
+	savedPage, found, _ := mockDS.GetCrawledPage(ctx, normalizedURL)
 	if !found {
 		t.Error("Expected page to be saved to Datastore")
 	}
@@ -97,20 +99,21 @@ func TestFetchArticleContent_FromDatastoreCache(t *testing.T) {
 	ctx := context.Background()
 	mockDS := NewMockDatastoreClient()
 
-	// Pre-populate the mock Datastore with a cached page
+	// Pre-populate the mock Datastore with a cached page (using normalized URL)
+	normalizedURL := lib.NormalizeURL("https://example.com/article")
 	cachedPage := &models.CrawledPage{
-		URL:      "https://example.com/article",
+		URL:      normalizedURL,
 		Title:    "Cached Article",
 		Content:  "This is cached content from Datastore",
 		DateTime: time.Now(),
 	}
-	mockDS.Pages["https://example.com/article"] = cachedPage
+	mockDS.Pages[normalizedURL] = cachedPage
 
 	httpClient := &http.Client{Timeout: 5 * time.Second}
 	var cacheWriter bytes.Buffer
 	cachePath := "/test/cache/path"
 
-	page, path, err := fetchArticleContent(ctx, "https://example.com/article", false, mockDS, httpClient, &cacheWriter, cachePath)
+	page, path, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
 
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
@@ -151,7 +154,8 @@ func TestFetchArticleContent_HTTPError(t *testing.T) {
 	cachePath := "/test/cache/path"
 	mockDS := NewMockDatastoreClient()
 
-	_, _, err := fetchArticleContent(ctx, server.URL, false, mockDS, httpClient, &cacheWriter, cachePath)
+	normalizedURL := lib.NormalizeURL(server.URL)
+	_, _, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
 
 	if err == nil {
 		t.Fatal("Expected error for 500 status code, but got nil")
@@ -187,7 +191,8 @@ func TestFetchArticleContent_FallbackToBody(t *testing.T) {
 	cachePath := "/test/cache/path"
 	mockDS := NewMockDatastoreClient()
 
-	page, _, err := fetchArticleContent(ctx, server.URL, false, mockDS, httpClient, &cacheWriter, cachePath)
+	normalizedURL := lib.NormalizeURL(server.URL)
+	page, _, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
 
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
@@ -229,7 +234,8 @@ func TestFetchArticleContent_ArticleTag(t *testing.T) {
 	cachePath := "/test/cache/path"
 	mockDS := NewMockDatastoreClient()
 
-	page, _, err := fetchArticleContent(ctx, server.URL, false, mockDS, httpClient, &cacheWriter, cachePath)
+	normalizedURL := lib.NormalizeURL(server.URL)
+	page, _, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
 
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
@@ -253,7 +259,8 @@ func TestFetchArticleContent_DatastoreGetError(t *testing.T) {
 	var cacheWriter bytes.Buffer
 	cachePath := "/test/cache/path"
 
-	_, _, err := fetchArticleContent(ctx, "https://example.com/article", false, mockDS, httpClient, &cacheWriter, cachePath)
+	normalizedURL := lib.NormalizeURL("https://example.com/article")
+	_, _, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
 
 	if err == nil {
 		t.Fatal("Expected error from Datastore, but got nil")
@@ -292,7 +299,8 @@ func TestFetchArticleContent_DatastoreCreateError(t *testing.T) {
 	var cacheWriter bytes.Buffer
 	cachePath := "/test/cache/path"
 
-	_, _, err := fetchArticleContent(ctx, server.URL, false, mockDS, httpClient, &cacheWriter, cachePath)
+	normalizedURL := lib.NormalizeURL(server.URL)
+	_, _, err := fetchArticleContent(ctx, normalizedURL, false, mockDS, httpClient, &cacheWriter, cachePath)
 
 	if err == nil {
 		t.Fatal("Expected error from Datastore create, but got nil")

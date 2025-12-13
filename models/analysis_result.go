@@ -2,6 +2,8 @@ package models
 
 import (
 	"cloud.google.com/go/datastore"
+
+	"github.com/zeace/poisson/lib"
 )
 
 // AnalysisResultKind is the Datastore kind name for AnalysisResult entities
@@ -21,7 +23,9 @@ type AnalysisResult struct {
 
 // MakeAnalysisResultKey returns a Datastore key for an AnalysisResult using the URL and mode as the key name.
 // The key name format is "url:mode" to ensure uniqueness per URL and mode combination.
+// The URL is normalized before creating the key.
 func MakeAnalysisResultKey(url, mode string) *datastore.Key {
-	keyName := url + ":" + mode
+	normalizedURL := lib.NormalizeURL(url)
+	keyName := normalizedURL + ":" + mode
 	return datastore.NameKey(AnalysisResultKind, keyName, nil)
 }
