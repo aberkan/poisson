@@ -11,7 +11,9 @@ import (
 	"github.com/zeace/poisson/crawler/analyzer"
 	"github.com/zeace/poisson/crawler/fetcher"
 	"github.com/zeace/poisson/crawler/rssfetcher"
+	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
+	"google.golang.org/api/option"
 )
 
 // displayAnalysis displays the analysis results and related information.
@@ -97,25 +99,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get API key from flag, secrets file, or environment
+	// Get API key from flag, embedded secrets, or environment
 	apiKeyValue := *apiKey
 	if apiKeyValue == "" {
-		// Try reading from secrets file
-		secretKey, err := os.ReadFile("secrets/openai_key")
-		if err == nil {
-			apiKeyValue = strings.TrimSpace(string(secretKey))
-		} else {
+		// Try embedded key from lib/secrets
+		apiKeyValue = lib.OpenAIKey()
+		if apiKeyValue == "" {
 			// Fall back to environment variable
 			apiKeyValue = os.Getenv("OPENAI_API_KEY")
 		}
 	}
 
-	// Set up Datastore client
+	// Set up Datastore client with embedded credentials
 	ctx := context.Background()
 	projectID := "poisson-berkan"
-	datastoreClient, err := datastore.NewClient(ctx, projectID)
+	googleKeyJSON := lib.GoogleKeyJSON()
+	var datastoreClient *datastore.Client
+	if len(googleKeyJSON) > 0 {
+		// Use embedded credentials
+		datastoreClient, err = datastore.NewClient(ctx, projectID, option.WithCredentialsJSON(googleKeyJSON))
+	} else {
+		// Fall back to default credentials (e.g., from environment)
+		datastoreClient, err = datastore.NewClient(ctx, projectID)
+	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error creating Datastore client: %v\n", err)
 		os.Exit(1)
 	}
 	defer datastoreClient.Close()

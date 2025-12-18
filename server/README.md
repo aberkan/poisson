@@ -22,10 +22,6 @@ A GraphQL server for the Poisson project that provides access to article analysi
 - `analysis(url: String!, mode: String): AnalysisResult` - Get analysis result for a URL
 - `crawledPage(url: String!): CrawledPage` - Get crawled page for a URL
 
-### Mutations
-
-- `analyze(url: String!, mode: String): AnalysisResult!` - Analyze a URL and return the result
-
 ## Environment Variables
 
 - `PORT` - Server port (default: 8080, Cloud Run sets this automatically)
@@ -75,15 +71,6 @@ curl -X POST http://localhost:8080/graphql \
   }'
 ```
 
-### Analyze URL (Mutation)
-```bash
-curl -X POST http://localhost:8080/graphql \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { analyze(url: \"https://example.com/article\", mode: \"joke\") { mode jokePercentage jokeReasoning promptFingerprint } }"
-  }'
-```
-
 ## Docker Build
 
 ```bash
@@ -130,17 +117,3 @@ query {
   }
 }
 ```
-
-### Analyze URL
-```graphql
-mutation {
-  analyze(url: "https://example.com/article", mode: "joke") {
-    mode
-    jokePercentage
-    jokeReasoning
-    promptFingerprint
-  }
-}
-```
-
-

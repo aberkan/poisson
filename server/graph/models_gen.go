@@ -16,8 +16,5 @@ type CrawledPage struct {
 	Datetime string `json:"datetime"`
 }
 
-type Mutation struct {
-}
-
 type Query struct {
 }

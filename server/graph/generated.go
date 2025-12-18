@@ -38,7 +38,6 @@ type Config struct {
 }
 
 type ResolverRoot interface {
-	Mutation() MutationResolver
 	Query() QueryResolver
 }
 
@@ -60,10 +59,6 @@ type ComplexityRoot struct {
 		URL      func(childComplexity int) int
 	}
 
-	Mutation struct {
-		Analyze func(childComplexity int, url string, mode *string) int
-	}
-
 	Query struct {
 		Analysis    func(childComplexity int, url string, mode *string) int
 		CrawledPage func(childComplexity int, url string) int
@@ -71,9 +66,6 @@ type ComplexityRoot struct {
 	}
 }
 
-type MutationResolver interface {
-	Analyze(ctx context.Context, url string, mode *string) (*AnalysisResult, error)
-}
 type QueryResolver interface {
 	Health(ctx context.Context) (string, error)
 	Analysis(ctx context.Context, url string, mode *string) (*AnalysisResult, error)
@@ -149,18 +141,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CrawledPage.URL(childComplexity), true
 
-	case "Mutation.analyze":
-		if e.complexity.Mutation.Analyze == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_analyze_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.Analyze(childComplexity, args["url"].(string), args["mode"].(*string)), true
-
 	case "Query.analysis":
 		if e.complexity.Query.Analysis == nil {
 			break
@@ -231,21 +211,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 
 			return &response
 		}
-	case ast.Mutation:
-		return func(ctx context.Context) *graphql.Response {
-			if !first {
-				return nil
-			}
-			first = false
-			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
-			data := ec._Mutation(ctx, opCtx.Operation.SelectionSet)
-			var buf bytes.Buffer
-			data.MarshalGQL(&buf)
-
-			return &graphql.Response{
-				Data: buf.Bytes(),
-			}
-		}
 
 	default:
 		return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
@@ -312,22 +277,6 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
-
-func (ec *executionContext) field_Mutation_analyze_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "url", ec.unmarshalNString2string)
-	if err != nil {
-		return nil, err
-	}
-	args["url"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "mode", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["mode"] = arg1
-	return args, nil
-}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -647,57 +596,6 @@ func (ec *executionContext) fieldContext_CrawledPage_datetime(_ context.Context,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_analyze(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_analyze,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().Analyze(ctx, fc.Args["url"].(string), fc.Args["mode"].(*string))
-		},
-		nil,
-		ec.marshalNAnalysisResult2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋserverᚋgraphᚐAnalysisResult,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_analyze(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "mode":
-				return ec.fieldContext_AnalysisResult_mode(ctx, field)
-			case "jokePercentage":
-				return ec.fieldContext_AnalysisResult_jokePercentage(ctx, field)
-			case "jokeReasoning":
-				return ec.fieldContext_AnalysisResult_jokeReasoning(ctx, field)
-			case "promptFingerprint":
-				return ec.fieldContext_AnalysisResult_promptFingerprint(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type AnalysisResult", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_analyze_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -2497,55 +2395,6 @@ func (ec *executionContext) _CrawledPage(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
-var mutationImplementors = []string{"Mutation"}
-
-func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
-	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
-		Object: "Mutation",
-	})
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		innerCtx := graphql.WithRootFieldContext(ctx, &graphql.RootFieldContext{
-			Object: field.Name,
-			Field:  field,
-		})
-
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Mutation")
-		case "analyze":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_analyze(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -2990,20 +2839,6 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 // endregion **************************** object.gotpl ****************************
 
 // region    ***************************** type.gotpl *****************************
-
-func (ec *executionContext) marshalNAnalysisResult2githubᚗcomᚋzeaceᚋpoissonᚋserverᚋgraphᚐAnalysisResult(ctx context.Context, sel ast.SelectionSet, v AnalysisResult) graphql.Marshaler {
-	return ec._AnalysisResult(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNAnalysisResult2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋserverᚋgraphᚐAnalysisResult(ctx context.Context, sel ast.SelectionSet, v *AnalysisResult) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._AnalysisResult(ctx, sel, v)
-}
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)

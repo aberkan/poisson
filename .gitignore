@@ -34,7 +34,7 @@ config.ini
 secrets.json
 
 # Secrets directory
-secrets/
+lib/secrets/
 
 # Cache directory
 cache/

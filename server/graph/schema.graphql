@@ -23,9 +23,3 @@ type CrawledPage {
 	datetime: String!
 }
 
-type Mutation {
-	# Analyze a URL and return the result
-	analyze(url: String!, mode: String): AnalysisResult!
-}
-
-
