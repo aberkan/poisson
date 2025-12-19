@@ -3,6 +3,7 @@ package rssfetcher
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/mmcdole/gofeed"
@@ -17,7 +18,7 @@ import (
 // Returns a slice of CrawledPage and any errors encountered.
 func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verbose bool, datastoreClient lib.DatastoreClient) ([]*models.CrawledPage, error) {
 	if verbose {
-		fmt.Printf("Fetching RSS feed from: %s\n", feedURL)
+		log.Printf("Fetching RSS feed from: %s\n", feedURL)
 	}
 
 	// Parse the RSS feed
@@ -28,7 +29,7 @@ func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verb
 	}
 
 	if verbose {
-		fmt.Printf("Found %d items in RSS feed\n", len(feed.Items))
+		log.Printf("Found %d items in RSS feed\n", len(feed.Items))
 	}
 
 	// Limit to maxArticles
@@ -38,7 +39,7 @@ func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verb
 	}
 
 	if verbose {
-		fmt.Printf("Fetching first %d articles...\n", itemsToFetch)
+		log.Printf("Fetching first %d articles...\n", itemsToFetch)
 	}
 
 	var pages []*models.CrawledPage
@@ -50,15 +51,15 @@ func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verb
 
 		if articleURL == "" {
 			if verbose {
-				fmt.Printf("Skipping item %d: no URL found\n", i+1)
+				log.Printf("Skipping item %d: no URL found\n", i+1)
 			}
 			continue
 		}
 
 		if verbose {
-			fmt.Printf("\n[%d/%d] Fetching: %s\n", i+1, itemsToFetch, articleURL)
+			log.Printf("\n[%d/%d] Fetching: %s\n", i+1, itemsToFetch, articleURL)
 			if item.Title != "" {
-				fmt.Printf("  Title: %s\n", item.Title)
+				log.Printf("  Title: %s\n", item.Title)
 			}
 		}
 
@@ -67,7 +68,7 @@ func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verb
 			errMsg := fmt.Sprintf("error fetching article %s: %v", articleURL, err)
 			errors = append(errors, errMsg)
 			if verbose {
-				fmt.Printf("  Error: %v\n", err)
+				log.Printf("  Error: %v\n", err)
 			}
 			continue
 		}
@@ -79,9 +80,9 @@ func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verb
 	// but include error information
 	if len(pages) > 0 && len(errors) > 0 {
 		if verbose {
-			fmt.Printf("\nWarning: %d article(s) fetched successfully, but %d error(s) occurred:\n", len(pages), len(errors))
+			log.Printf("\nWarning: %d article(s) fetched successfully, but %d error(s) occurred:\n", len(pages), len(errors))
 			for _, errMsg := range errors {
-				fmt.Printf("  - %s\n", errMsg)
+				log.Printf("  - %s\n", errMsg)
 			}
 		}
 		return pages, nil

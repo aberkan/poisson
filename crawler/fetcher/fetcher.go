@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -67,13 +68,13 @@ func fetchArticleContent(
 	}
 	if found {
 		if verbose {
-			fmt.Println("Using cached version from Datastore")
+			log.Printf("Using cached version from Datastore\n")
 		}
 		// Ensure content is also in file cache
 		if _, err := cacheWriter.Write([]byte(page.Content)); err != nil {
 			// Log error but don't fail the request
 			if verbose {
-				fmt.Printf("Warning: failed to save to file cache: %v\n", err)
+				log.Printf("Warning: failed to save to file cache: %v\n", err)
 			}
 		}
 		return page, cachePath, nil
@@ -83,7 +84,7 @@ func fetchArticleContent(
 	// Add protocol back for HTTP request
 	fetchURL := lib.AddProtocol(normalizedURL)
 	if verbose {
-		fmt.Println("Fetching from URL...")
+		log.Printf("Fetching from URL...\n")
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", fetchURL, nil)
@@ -146,7 +147,7 @@ func fetchArticleContent(
 		return nil, "", fmt.Errorf("error saving crawled page to Datastore: %w", err)
 	}
 	if verbose {
-		fmt.Println("Saved to Datastore")
+		log.Printf("Saved to Datastore\n")
 	}
 
 	// Save to cache

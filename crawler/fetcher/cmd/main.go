@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -19,10 +19,10 @@ func main() {
 	flag.Parse()
 
 	if flag.NArg() == 0 {
-		fmt.Fprintf(os.Stderr, "Error: URL argument required\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s [flags] <url>\n", os.Args[0])
+		log.Printf("Error: URL argument required\n")
+		log.Printf("Usage: %s [flags] <url>\n", os.Args[0])
 		flag.PrintDefaults()
-		os.Exit(1)
+		log.Fatalf("")
 	}
 
 	url := flag.Arg(0)
@@ -31,29 +31,27 @@ func main() {
 	ctx := context.Background()
 	datastoreClient, err := lib.CreateDatastoreClient(ctx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating Datastore client: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error creating Datastore client: %v\n", err)
 	}
 	defer datastoreClient.Close()
 
-	fmt.Printf("Fetching article from: %s\n", url)
+	log.Printf("Fetching article from: %s\n", url)
 	page, cachePath, err := fetcher.FetchArticleContent(ctx, url, *verbose, datastoreClient)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error: %v\n", err)
 	}
 
-	fmt.Printf("Title: %s\n", page.Title)
-	fmt.Printf("Cache file: %s\n", cachePath)
-	fmt.Printf("Crawled at: %s\n", page.DateTime.Format(time.RFC3339))
+	log.Printf("Title: %s\n", page.Title)
+	log.Printf("Cache file: %s\n", cachePath)
+	log.Printf("Crawled at: %s\n", page.DateTime.Format(time.RFC3339))
 
-	fmt.Printf("\nFetched %d characters of content\n\n", len(page.Content))
-	fmt.Println("Content:")
-	fmt.Println(strings.Repeat("=", 60))
+	log.Printf("\nFetched %d characters of content\n\n", len(page.Content))
+	log.Printf("Content:\n")
+	log.Printf("%s\n", strings.Repeat("=", 60))
 	if len(page.Content) > 1000 {
-		fmt.Println(page.Content[:1000] + "...")
+		log.Printf("%s\n", page.Content[:1000]+"...")
 	} else {
-		fmt.Println(page.Content)
+		log.Printf("%s\n", page.Content)
 	}
-	fmt.Println(strings.Repeat("=", 60))
+	log.Printf("%s\n", strings.Repeat("=", 60))
 }

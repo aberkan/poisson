@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -20,49 +20,46 @@ func main() {
 	// Validate mode
 	promptMode, err := analyzer.VerifyValidMode(*mode)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: unknown mode '%s'. Valid modes: joke\n", *mode)
-		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
+		log.Printf("Error: unknown mode '%s'. Valid modes: joke\n", *mode)
+		log.Printf("Usage: %s [flags]\n", os.Args[0])
 		flag.PrintDefaults()
-		os.Exit(1)
+		log.Fatalf("")
 	}
 
 	if *filePath == "" {
-		fmt.Fprintf(os.Stderr, "Error: file path required\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
+		log.Printf("Error: file path required\n")
+		log.Printf("Usage: %s [flags]\n", os.Args[0])
 		flag.PrintDefaults()
-		os.Exit(1)
+		log.Fatalf("")
 	}
 
 	// Get API key from flag or environment
 	apiKeyValue := *apiKey
 
 	// Read content from file
-	fmt.Printf("Reading content from: %s\n", *filePath)
+	log.Printf("Reading content from: %s\n", *filePath)
 	content, err := os.ReadFile(*filePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error reading file: %v\n", err)
 	}
 
 	contentStr := string(content)
-	fmt.Printf("Read %d characters from file\n", len(contentStr))
-	fmt.Println("Analyzing content with LLM...")
+	log.Printf("Read %d characters from file\n", len(contentStr))
+	log.Printf("Analyzing content with LLM...\n")
 
 	// For file-based analyzer, no title is available - use empty string
 	prompt, err := analyzer.GeneratePrompt(promptMode, "", contentStr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error: %v\n", err)
 	}
 	analysis, err := analyzer.AnalyzeWithLLM(prompt, apiKeyValue)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error: %v\n", err)
 	}
 
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("ANALYSIS RESULTS")
-	fmt.Println(strings.Repeat("=", 60))
-	fmt.Println(analysis)
-	fmt.Println(strings.Repeat("=", 60))
+	log.Printf("\n%s\n", strings.Repeat("=", 60))
+	log.Printf("ANALYSIS RESULTS\n")
+	log.Printf("%s\n", strings.Repeat("=", 60))
+	log.Printf("%s\n", analysis)
+	log.Printf("%s\n", strings.Repeat("=", 60))
 }

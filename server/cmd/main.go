@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -20,8 +19,7 @@ func main() {
 	// Initialize Datastore client with embedded credentials
 	datastoreClient, err := lib.CreateDatastoreClient(ctx)
 	if err != nil {
-		log.Printf("Failed to create datastore client: %v", err)
-		os.Exit(1)
+		log.Fatalf("Failed to create datastore client: %v", err)
 	}
 	defer datastoreClient.Close()
 
@@ -38,12 +36,12 @@ func main() {
 
 	// GraphQL endpoints with CORS middleware
 	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("graphql request\n")
+		log.Printf("graphql request\n")
 		graphqlHandler.ServeHTTP(w, r)
 	}))
 
 	mux.HandleFunc("/graphql", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("graphql request\n")
+		log.Printf("graphql request\n")
 		graphqlHandler.ServeHTTP(w, r)
 	}))
 
@@ -54,7 +52,7 @@ func main() {
 	})
 
 	mux.HandleFunc("/graphiql", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("playground request\n")
+		log.Printf("playground request\n")
 		playgroundHandler.ServeHTTP(w, r)
 	})
 

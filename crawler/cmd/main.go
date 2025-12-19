@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -24,39 +24,39 @@ func displayAnalysis(
 ) {
 	// Show article progress if provided
 	if articleNum > 0 && totalArticles > 0 {
-		fmt.Println()
-		fmt.Println(strings.Repeat("-", 120))
-		fmt.Printf("Article %d/%d\n", articleNum, totalArticles)
+		log.Printf("\n")
+		log.Printf("%s\n", strings.Repeat("-", 120))
+		log.Printf("Article %d/%d\n", articleNum, totalArticles)
 	}
 
 	// Show verbose preview if requested
 	if verbose {
-		fmt.Printf("Title: %s\n", title)
-		fmt.Printf("URL: %s\n", url)
+		log.Printf("Title: %s\n", title)
+		log.Printf("URL: %s\n", url)
 		preview := content
 		previewLen := 200
 		if len(preview) > previewLen {
 			preview = preview[:previewLen] + "..."
 		}
-		fmt.Printf("Preview: %s\n\n", preview)
+		log.Printf("Preview: %s\n\n", preview)
 	}
 
 	// Show analyzing message
-	fmt.Println("Analyzing content with LLM...")
+	log.Printf("Analyzing content with LLM...\n")
 
 	// Display results
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("ANALYSIS RESULTS")
-	fmt.Println(strings.Repeat("=", 60))
+	log.Printf("\n%s\n", strings.Repeat("=", 60))
+	log.Printf("ANALYSIS RESULTS\n")
+	log.Printf("%s\n", strings.Repeat("=", 60))
 	if analysis.JokePercentage == nil {
-		fmt.Printf("Joke Percentage: null (no mention of jokes)\n")
+		log.Printf("Joke Percentage: null (no mention of jokes)\n")
 	} else {
-		fmt.Printf("Joke Percentage: %d\n", *analysis.JokePercentage)
+		log.Printf("Joke Percentage: %d\n", *analysis.JokePercentage)
 	}
 	if analysis.JokeReasoning != nil {
-		fmt.Printf("Joke Reasoning: %s\n", *analysis.JokeReasoning)
+		log.Printf("Joke Reasoning: %s\n", *analysis.JokeReasoning)
 	}
-	fmt.Println(strings.Repeat("=", 60))
+	log.Printf("%s\n", strings.Repeat("=", 60))
 }
 
 func main() {
@@ -73,10 +73,10 @@ func main() {
 	// Validate mode
 	promptMode, err := analyzer.VerifyValidMode(*mode)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: unknown mode '%s'. Valid modes: joke\n", *mode)
-		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
+		log.Printf("Error: unknown mode '%s'. Valid modes: joke\n", *mode)
+		log.Printf("Usage: %s [flags]\n", os.Args[0])
 		flag.PrintDefaults()
-		os.Exit(1)
+		log.Fatalf("")
 	}
 
 	// Validate that exactly one of --url or --rss is provided
@@ -84,17 +84,17 @@ func main() {
 	rssProvided := *rss != ""
 
 	if !urlProvided && !rssProvided {
-		fmt.Fprintf(os.Stderr, "Error: exactly one of --url or --rss must be provided\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
+		log.Printf("Error: exactly one of --url or --rss must be provided\n")
+		log.Printf("Usage: %s [flags]\n", os.Args[0])
 		flag.PrintDefaults()
-		os.Exit(1)
+		log.Fatalf("")
 	}
 
 	if urlProvided && rssProvided {
-		fmt.Fprintf(os.Stderr, "Error: cannot specify both --url and --rss\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
+		log.Printf("Error: cannot specify both --url and --rss\n")
+		log.Printf("Usage: %s [flags]\n", os.Args[0])
 		flag.PrintDefaults()
-		os.Exit(1)
+		log.Fatalf("")
 	}
 
 	// Get API key from flag, embedded secrets, or environment
@@ -112,52 +112,47 @@ func main() {
 	ctx := context.Background()
 	datastoreClient, err := lib.CreateDatastoreClient(ctx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating Datastore client: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error creating Datastore client: %v\n", err)
 	}
 	defer datastoreClient.Close()
 
 	if urlProvided {
 		// Single URL mode - existing behavior
-		fmt.Printf("Fetching article from: %s\n", *url)
+		log.Printf("Fetching article from: %s\n", *url)
 		page, cachePath, err := fetcher.FetchArticleContent(ctx, *url, *verbose, datastoreClient)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Error: %v\n", err)
 		}
 		_ = cachePath // cache path available for future use
 
 		analysis, err := analyzer.Analyze(ctx, page, apiKeyValue, promptMode, datastoreClient, *verbose)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Error: %v\n", err)
 		}
 		displayAnalysis(analysis, page.Title, page.URL, page.Content, *verbose, 0, 0)
 	} else {
 		// RSS mode - fetch articles and analyze each
 		pages, err := rssfetcher.FetchRSSArticles(ctx, *rss, *max, *verbose, datastoreClient)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error fetching RSS articles: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Error fetching RSS articles: %v\n", err)
 		}
 
 		if len(pages) == 0 {
-			fmt.Fprintf(os.Stderr, "Error: no articles fetched from RSS feed\n")
-			os.Exit(1)
+			log.Fatalf("Error: no articles fetched from RSS feed\n")
 		}
 
-		fmt.Printf("\n%s\n", strings.Repeat("=", 60))
-		fmt.Printf("Analyzing %d article(s) from RSS feed\n", len(pages))
-		fmt.Printf("%s\n\n", strings.Repeat("=", 60))
+		log.Printf("\n%s\n", strings.Repeat("=", 60))
+		log.Printf("Analyzing %d article(s) from RSS feed\n", len(pages))
+		log.Printf("%s\n\n", strings.Repeat("=", 60))
 
 		for i, page := range pages {
 			showSeparator := i < len(pages)-1
 			analysis, err := analyzer.Analyze(ctx, page, apiKeyValue, promptMode, datastoreClient, *verbose)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error analyzing article %d: %v\n", i+1, err)
-				fmt.Println(strings.Repeat("-", 120))
+				log.Printf("Error analyzing article %d: %v\n", i+1, err)
+				log.Printf("%s\n", strings.Repeat("-", 120))
 				if showSeparator {
-					fmt.Println()
+					log.Printf("\n")
 				}
 				continue
 			}

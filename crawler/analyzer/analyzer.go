@@ -3,6 +3,7 @@ package analyzer
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/zeace/poisson/lib"
@@ -66,19 +67,19 @@ func analyze(
 		// Verify that the PromptFingerprint matches before using cached result
 		if cachedResult.PromptFingerprint == fingerprint {
 			if verbose {
-				fmt.Println("Using cached analysis result from Datastore")
+				log.Printf("Using cached analysis result from Datastore\n")
 			}
 			return cachedResult, nil
 		}
 		// Fingerprint doesn't match, continue to analyze with LLM
 		if verbose {
-			fmt.Println("Cached result has mismatched fingerprint, analyzing with LLM...")
+			log.Printf("Cached result has mismatched fingerprint, analyzing with LLM...\n")
 		}
 	}
 
 	// Cache miss or fingerprint mismatch, analyze with LLM
 	if verbose {
-		fmt.Println("Analyzing with LLM...")
+		log.Printf("Analyzing with LLM...\n")
 	}
 	prompt, err := GeneratePrompt(mode, page.Title, page.Content)
 	if err != nil {
@@ -110,10 +111,10 @@ func analyze(
 	// Save to cache
 	err = datastoreClient.WriteAnalysisResult(ctx, page.URL, result)
 	if err != nil {
-		fmt.Printf("Warning: error saving analysis result to cache: %v\n", err)
+		log.Printf("Warning: error saving analysis result to cache: %v\n", err)
 		// The analysis was successful, caching is just an optimization
 	} else if verbose {
-		fmt.Println("Saved analysis result to Datastore cache")
+		log.Printf("Saved analysis result to Datastore cache\n")
 	}
 
 	return result, nil
