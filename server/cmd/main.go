@@ -23,47 +23,12 @@ func main() {
 	}
 	defer datastoreClient.Close()
 
-	// Create GraphQL handler
-	graphqlHandler, err := NewGraphQLHandler(datastoreClient)
-	if err != nil {
-		log.Fatalf("Failed to create GraphQL handler: %v", err)
-	}
-
-	playgroundHandler := NewPlaygroundHandler()
-
-	// Set up HTTP routes
-	mux := http.NewServeMux()
-
-	// GraphQL endpoints with CORS middleware
-	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("graphql request\n")
-		graphqlHandler.ServeHTTP(w, r)
-	}))
-
-	mux.HandleFunc("/graphql", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("graphql request\n")
-		graphqlHandler.ServeHTTP(w, r)
-	}))
-
-	// Health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	})
-
-	mux.HandleFunc("/graphiql", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("playground request\n")
-		playgroundHandler.ServeHTTP(w, r)
-	})
-
-	// Get port from environment (Cloud Run sets PORT)
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	// Set up and start the server
+	server := setupServer(datastoreClient)
+	port := getPort()
 
 	log.Printf("Starting GraphQL server on port %s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, server); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
@@ -86,6 +51,64 @@ func NewGraphQLHandler(datastoreClient lib.DatastoreClient) (*handler.Server, er
 // NewPlaygroundHandler creates a GraphQL playground handler
 func NewPlaygroundHandler() http.Handler {
 	return playground.Handler("GraphQL playground", "/graphql")
+}
+
+// setupServer creates and configures the HTTP server with all routes
+func setupServer(datastoreClient lib.DatastoreClient) http.Handler {
+	// Create GraphQL handler
+	graphqlHandler, err := NewGraphQLHandler(datastoreClient)
+	if err != nil {
+		log.Fatalf("Failed to create GraphQL handler: %v", err)
+	}
+
+	playgroundHandler := NewPlaygroundHandler()
+
+	// Set up HTTP routes
+	mux := http.NewServeMux()
+	setupRoutes(mux, graphqlHandler, playgroundHandler)
+
+	return mux
+}
+
+// setupRoutes registers all HTTP routes with the provided mux
+func setupRoutes(mux *http.ServeMux, graphqlHandler *handler.Server, playgroundHandler http.Handler) {
+	// GraphQL endpoints with CORS middleware
+	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("graphql request\n")
+		graphqlHandler.ServeHTTP(w, r)
+	}))
+
+	mux.HandleFunc("/graphql", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("graphql request\n")
+		graphqlHandler.ServeHTTP(w, r)
+	}))
+
+	// Health check endpoint
+	mux.HandleFunc("/health", healthHandler)
+
+	// GraphQL playground endpoint
+	mux.HandleFunc("/graphiql", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("playground request\n")
+		playgroundHandler.ServeHTTP(w, r)
+	})
+}
+
+// healthHandler handles the /health endpoint
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		log.Printf("Failed to encode health response: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// getPort returns the server port from environment variable or default
+func getPort() string {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	return port
 }
 
 // corsMiddleware wraps an HTTP handler with CORS headers and OPTIONS handling
