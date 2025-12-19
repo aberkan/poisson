@@ -7,13 +7,11 @@ import (
 	"os"
 	"strings"
 
-	"cloud.google.com/go/datastore"
 	"github.com/zeace/poisson/crawler/analyzer"
 	"github.com/zeace/poisson/crawler/fetcher"
 	"github.com/zeace/poisson/crawler/rssfetcher"
 	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
-	"google.golang.org/api/option"
 )
 
 // displayAnalysis displays the analysis results and related information.
@@ -112,16 +110,7 @@ func main() {
 
 	// Set up Datastore client with embedded credentials
 	ctx := context.Background()
-	projectID := "poisson-berkan"
-	googleKeyJSON := lib.GoogleKeyJSON()
-	var datastoreClient *datastore.Client
-	if len(googleKeyJSON) > 0 {
-		// Use embedded credentials
-		datastoreClient, err = datastore.NewClient(ctx, projectID, option.WithCredentialsJSON(googleKeyJSON))
-	} else {
-		// Fall back to default credentials (e.g., from environment)
-		datastoreClient, err = datastore.NewClient(ctx, projectID)
-	}
+	datastoreClient, err := lib.CreateDatastoreClient(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating Datastore client: %v\n", err)
 		os.Exit(1)

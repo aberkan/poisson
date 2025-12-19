@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/datastore"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
@@ -169,7 +168,7 @@ func FetchArticleContent(
 	ctx context.Context,
 	url string,
 	verbose bool,
-	datastoreClient *datastore.Client,
+	datastoreClient lib.DatastoreClient,
 ) (*models.CrawledPage, string, error) {
 	// Normalize URL for Datastore operations (remove protocol and query params)
 	normalizedURL := lib.NormalizeURL(url)
@@ -192,12 +191,6 @@ func FetchArticleContent(
 	}
 	defer cacheFile.Close()
 
-	// Wrap the concrete datastore client in an adapter
-	var dsClient lib.DatastoreClient
-	if datastoreClient != nil {
-		dsClient = lib.NewDatastoreClient(datastoreClient)
-	}
-
 	// Use normalized URL for all operations
-	return fetchArticleContent(ctx, normalizedURL, verbose, dsClient, httpClient, cacheFile, cachePath)
+	return fetchArticleContent(ctx, normalizedURL, verbose, datastoreClient, httpClient, cacheFile, cachePath)
 }

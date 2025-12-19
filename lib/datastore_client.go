@@ -2,10 +2,12 @@ package lib
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"cloud.google.com/go/datastore"
 	"github.com/zeace/poisson/models"
+	"google.golang.org/api/option"
 )
 
 // DatastoreClient defines the interface for all Datastore operations needed by the crawler.
@@ -17,11 +19,40 @@ type DatastoreClient interface {
 	// AnalysisResult operations
 	ReadAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error)
 	WriteAnalysisResult(ctx context.Context, url string, result *models.AnalysisResult) error
+
+	// Close closes the underlying datastore client
+	Close() error
 }
 
 // datastoreClientAdapter wraps a *datastore.Client to implement DatastoreClient
 type datastoreClientAdapter struct {
 	client *datastore.Client
+}
+
+// CreateDatastoreClient creates a new DatastoreClient with embedded credentials or default credentials.
+// It uses the project ID from GOOGLE_CLOUD_PROJECT environment variable, or defaults to "poisson-berkan".
+func CreateDatastoreClient(ctx context.Context) (DatastoreClient, error) {
+	// Get project ID from environment or use default
+	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	if projectID == "" {
+		projectID = "poisson-berkan"
+	}
+
+	// Try to use embedded credentials first
+	googleKeyJSON := GoogleKeyJSON()
+	var client *datastore.Client
+	var err error
+	if len(googleKeyJSON) > 0 {
+		client, err = datastore.NewClient(ctx, projectID, option.WithCredentialsJSON(googleKeyJSON))
+	} else {
+		// Fall back to default credentials (e.g., from environment)
+		client, err = datastore.NewClient(ctx, projectID)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return NewDatastoreClient(client), nil
 }
 
 // NewDatastoreClient creates a new DatastoreClient from a datastore.Client
@@ -43,6 +74,10 @@ func (d *datastoreClientAdapter) ReadAnalysisResult(ctx context.Context, url, mo
 
 func (d *datastoreClientAdapter) WriteAnalysisResult(ctx context.Context, url string, result *models.AnalysisResult) error {
 	return models.WriteAnalysisResult(ctx, d.client, url, result)
+}
+
+func (d *datastoreClientAdapter) Close() error {
+	return d.client.Close()
 }
 
 // MockDatastoreClient is a mock implementation of DatastoreClient for testing
@@ -103,5 +138,9 @@ func (m *MockDatastoreClient) WriteAnalysisResult(ctx context.Context, url strin
 	}
 	key := url + ":" + string(result.Mode)
 	m.AnalysisResults[key] = result
+	return nil
+}
+
+func (m *MockDatastoreClient) Close() error {
 	return nil
 }

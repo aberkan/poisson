@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"cloud.google.com/go/datastore"
 	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
 )
@@ -122,19 +121,14 @@ func analyze(
 
 // Analyze analyzes content with LLM and returns the parsed analysis result.
 // If datastoreClient is provided, it will check for cached results and save new results.
-// This is the external API that takes a *datastore.Client directly.
 func Analyze(
 	ctx context.Context,
 	page *models.CrawledPage,
 	apiKey string,
 	mode AnalysisMode,
-	datastoreClient *datastore.Client,
+	datastoreClient lib.DatastoreClient,
 	verbose bool,
 ) (*models.AnalysisResult, error) {
-	var dsClient lib.DatastoreClient
-	if datastoreClient != nil {
-		dsClient = lib.NewDatastoreClient(datastoreClient)
-	}
 	llmClient := NewGptLlmClient(apiKey)
-	return analyze(ctx, page, llmClient, mode, dsClient, verbose)
+	return analyze(ctx, page, llmClient, mode, datastoreClient, verbose)
 }

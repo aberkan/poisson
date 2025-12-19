@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/datastore"
 	"github.com/zeace/poisson/crawler/fetcher"
+	"github.com/zeace/poisson/lib"
 )
 
 func main() {
@@ -29,8 +29,7 @@ func main() {
 
 	// Set up Datastore client
 	ctx := context.Background()
-	projectID := "poisson-berkan"
-	datastoreClient, err := datastore.NewClient(ctx, projectID)
+	datastoreClient, err := lib.CreateDatastoreClient(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating Datastore client: %v\n", err)
 		os.Exit(1)

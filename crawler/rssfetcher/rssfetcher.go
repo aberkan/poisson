@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"cloud.google.com/go/datastore"
 	"github.com/mmcdole/gofeed"
 	"github.com/zeace/poisson/crawler/fetcher"
+	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
 )
 
@@ -15,7 +15,7 @@ import (
 // the content of the first maxArticles articles using FetchArticleContent.
 // If datastoreClient and ctx are provided, crawled pages will be saved to Datastore.
 // Returns a slice of CrawledPage and any errors encountered.
-func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verbose bool, datastoreClient *datastore.Client) ([]*models.CrawledPage, error) {
+func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verbose bool, datastoreClient lib.DatastoreClient) ([]*models.CrawledPage, error) {
 	if verbose {
 		fmt.Printf("Fetching RSS feed from: %s\n", feedURL)
 	}

@@ -1,16 +1,16 @@
 package graph
 
 import (
-	"cloud.google.com/go/datastore"
+	"github.com/zeace/poisson/lib"
 )
 
 // Resolver handles GraphQL queries and mutations
 type Resolver struct {
-	datastoreClient *datastore.Client
+	datastoreClient lib.DatastoreClient
 }
 
 // NewResolver creates a new resolver instance
-func NewResolver(datastoreClient *datastore.Client) *Resolver {
+func NewResolver(datastoreClient lib.DatastoreClient) *Resolver {
 	return &Resolver{
 		datastoreClient: datastoreClient,
 	}

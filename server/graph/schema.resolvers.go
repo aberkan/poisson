@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/zeace/poisson/crawler/analyzer"
-	"github.com/zeace/poisson/models"
 )
 
 // Health is the resolver for the health field.
@@ -32,7 +31,7 @@ func (r *queryResolver) Analysis(ctx context.Context, url string, mode *string) 
 	}
 
 	// Read from datastore
-	result, found, err := models.ReadAnalysisResult(ctx, r.datastoreClient, url, modeStr)
+	result, found, err := r.datastoreClient.ReadAnalysisResult(ctx, url, modeStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read analysis result: %v", err)
 	}
@@ -51,7 +50,7 @@ func (r *queryResolver) Analysis(ctx context.Context, url string, mode *string) 
 
 // CrawledPage is the resolver for the crawledPage field.
 func (r *queryResolver) CrawledPage(ctx context.Context, url string) (*CrawledPage, error) {
-	page, found, err := models.ReadCrawledPage(ctx, r.datastoreClient, url)
+	page, found, err := r.datastoreClient.ReadCrawledPage(ctx, url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read crawled page: %v", err)
 	}
