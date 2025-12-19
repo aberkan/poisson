@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/zeace/poisson/crawler/config"
 	"github.com/zeace/poisson/lib"
 	"github.com/zeace/poisson/models"
 )
@@ -13,7 +14,9 @@ import (
 // AnalyzeWithLLM analyzes content using an LLM with the provided prompt.
 // Deprecated: Use LlmClient interface instead. This function is kept for backward compatibility.
 func AnalyzeWithLLM(prompt, apiKey string) (string, error) {
-	ctx := context.Background()
+	ctx, cancel := config.NewAnalysisContext()
+	defer cancel()
+
 	client := NewGptLlmClient(apiKey)
 	return client.Analyze(ctx, prompt)
 }

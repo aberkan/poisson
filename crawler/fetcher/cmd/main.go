@@ -1,14 +1,15 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/zeace/poisson/crawler/config"
 	"github.com/zeace/poisson/crawler/fetcher"
+	"github.com/zeace/poisson/crawler/utils"
 	"github.com/zeace/poisson/lib"
 )
 
@@ -27,16 +28,26 @@ func main() {
 
 	url := flag.Arg(0)
 
+	// Validate URL before fetching
+	if err := utils.ValidateURL(url); err != nil {
+		log.Fatalf("Invalid URL: %v\n", err)
+	}
+
 	// Set up Datastore client
-	ctx := context.Background()
-	datastoreClient, err := lib.CreateDatastoreClient(ctx)
+	dsCtx, dsCancel := config.NewDatastoreContext()
+	datastoreClient, err := lib.CreateDatastoreClient(dsCtx)
+	dsCancel()
 	if err != nil {
 		log.Fatalf("Error creating Datastore client: %v\n", err)
 	}
 	defer datastoreClient.Close()
 
+	// Fetch article with timeout
+	fetchCtx, fetchCancel := config.NewFetchContext()
+	defer fetchCancel()
+
 	log.Printf("Fetching article from: %s\n", url)
-	page, cachePath, err := fetcher.FetchArticleContent(ctx, url, *verbose, datastoreClient)
+	page, cachePath, err := fetcher.FetchArticleContent(fetchCtx, url, *verbose, datastoreClient)
 	if err != nil {
 		log.Fatalf("Error: %v\n", err)
 	}

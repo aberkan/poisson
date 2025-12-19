@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/mmcdole/gofeed"
 	"github.com/zeace/poisson/crawler/fetcher"
@@ -43,7 +42,7 @@ func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verb
 	}
 
 	var pages []*models.CrawledPage
-	var errors []string
+	var fetchErrors []error
 
 	for i := 0; i < itemsToFetch; i++ {
 		item := feed.Items[i]
@@ -65,8 +64,7 @@ func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verb
 
 		page, _, err := fetcher.FetchArticleContent(ctx, articleURL, verbose, datastoreClient)
 		if err != nil {
-			errMsg := fmt.Sprintf("error fetching article %s: %v", articleURL, err)
-			errors = append(errors, errMsg)
+			fetchErrors = append(fetchErrors, fmt.Errorf("article %s: %w", articleURL, err))
 			if verbose {
 				log.Printf("  Error: %v\n", err)
 			}
@@ -76,21 +74,21 @@ func FetchRSSArticles(ctx context.Context, feedURL string, maxArticles int, verb
 		pages = append(pages, page)
 	}
 
-	// If we got some pages but also some errors, return what we have
-	// but include error information
-	if len(pages) > 0 && len(errors) > 0 {
-		if verbose {
-			log.Printf("\nWarning: %d article(s) fetched successfully, but %d error(s) occurred:\n", len(pages), len(errors))
-			for _, errMsg := range errors {
-				log.Printf("  - %s\n", errMsg)
-			}
-		}
-		return pages, nil
+	// If we have errors and no pages, return an error
+	if len(pages) == 0 && len(fetchErrors) > 0 {
+		return nil, fmt.Errorf("failed to fetch any articles: %v", fetchErrors)
 	}
 
-	// If we have errors and no pages, return an error
-	if len(pages) == 0 && len(errors) > 0 {
-		return nil, fmt.Errorf("failed to fetch any articles: %s", strings.Join(errors, "; "))
+	// If we got some pages but also some errors, return pages with an error indicating partial failure
+	if len(pages) > 0 && len(fetchErrors) > 0 {
+		if verbose {
+			log.Printf("\nWarning: %d article(s) fetched successfully, but %d error(s) occurred:\n", len(pages), len(fetchErrors))
+			for _, err := range fetchErrors {
+				log.Printf("  - %v\n", err)
+			}
+		}
+		return pages, fmt.Errorf("partial success: fetched %d article(s) but %d error(s) occurred: %v",
+			len(pages), len(fetchErrors), fetchErrors)
 	}
 
 	return pages, nil

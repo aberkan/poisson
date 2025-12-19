@@ -1,14 +1,15 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/zeace/poisson/crawler/config"
 	"github.com/zeace/poisson/crawler/rssfetcher"
+	"github.com/zeace/poisson/crawler/utils"
 	"github.com/zeace/poisson/lib"
 )
 
@@ -27,17 +28,34 @@ func main() {
 		log.Fatalf("")
 	}
 
+	// Validate RSS URL
+	if err := utils.ValidateRSSURL(*url); err != nil {
+		log.Fatalf("Invalid RSS feed URL: %v\n", err)
+	}
+
 	// Set up Datastore client
-	ctx := context.Background()
-	datastoreClient, err := lib.CreateDatastoreClient(ctx)
+	dsCtx, dsCancel := config.NewDatastoreContext()
+	datastoreClient, err := lib.CreateDatastoreClient(dsCtx)
+	defer dsCancel()
+	
 	if err != nil {
 		log.Fatalf("Error creating Datastore client: %v\n", err)
 	}
 	defer datastoreClient.Close()
 
-	pages, err := rssfetcher.FetchRSSArticles(ctx, *url, *max, *verbose, datastoreClient)
+	// Fetch RSS articles with timeout
+	rssCtx, rssCancel := config.NewRSSContext()
+	defer rssCancel()
+
+	pages, err := rssfetcher.FetchRSSArticles(rssCtx, *url, *max, *verbose, datastoreClient)
 	if err != nil {
-		log.Fatalf("Error: %v\n", err)
+		// Check if we got partial success (some pages but also errors)
+		if len(pages) == 0 {
+			// Complete failure - no pages fetched
+			log.Fatalf("Error: %v\n", err)
+		}
+		// Partial success - log warning but continue with available pages
+		log.Printf("Warning: %v\n", err)
 	}
 
 	log.Printf("\n%s\n", strings.Repeat("=", 60))

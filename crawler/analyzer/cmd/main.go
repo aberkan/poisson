@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/zeace/poisson/crawler/analyzer"
+	"github.com/zeace/poisson/crawler/config"
 )
 
 func main() {
@@ -33,8 +34,8 @@ func main() {
 		log.Fatalf("")
 	}
 
-	// Get API key from flag or environment
-	apiKeyValue := *apiKey
+	// Get API key from flag, embedded secrets, or environment
+	apiKeyValue := config.GetOpenAIKey(*apiKey)
 
 	// Read content from file
 	log.Printf("Reading content from: %s\n", *filePath)
