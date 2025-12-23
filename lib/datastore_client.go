@@ -15,6 +15,7 @@ type DatastoreClient interface {
 	// CrawledPage operations
 	ReadCrawledPage(ctx context.Context, url string) (*models.CrawledPage, bool, error)
 	WriteCrawledPage(ctx context.Context, url, title, content string, datetime time.Time) (*models.CrawledPage, error)
+	GetCrawledPagesSince(ctx context.Context, oldestDate time.Time) ([]models.CrawledPage, error)
 
 	// AnalysisResult operations
 	ReadAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error)
@@ -68,6 +69,21 @@ func (d *datastoreClientAdapter) WriteCrawledPage(ctx context.Context, url, titl
 	return models.WriteCrawledPage(ctx, d.client, url, title, content, datetime)
 }
 
+// GetCrawledPagesSince returns all CrawledPages with DateTime >= oldestDate.
+func (d *datastoreClientAdapter) GetCrawledPagesSince(ctx context.Context, oldestDate time.Time) ([]models.CrawledPage, error) {
+	query := datastore.NewQuery(models.CrawledPageKind).
+		FilterField("datetime", ">=", oldestDate).
+		Order("datetime")
+
+	var pages []models.CrawledPage
+	_, err := d.client.GetAll(ctx, query, &pages)
+	if err != nil {
+		return nil, err
+	}
+
+	return pages, nil
+}
+
 func (d *datastoreClientAdapter) ReadAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error) {
 	return models.ReadAnalysisResult(ctx, d.client, url, mode)
 }
@@ -113,12 +129,25 @@ func (m *MockDatastoreClient) WriteCrawledPage(ctx context.Context, url, title, 
 		return nil, m.CreateError
 	}
 	page := &models.CrawledPage{
-		URL:     url,
-		Title:   title,
-		Content: content,
+		URL:      url,
+		Title:    title,
+		Content:  content,
+		DateTime: datetime,
 	}
 	m.Pages[url] = page
 	return page, nil
+}
+
+func (m *MockDatastoreClient) GetCrawledPagesSince(ctx context.Context, oldestDate time.Time) ([]models.CrawledPage, error) {
+	var pages []models.CrawledPage
+
+	for _, page := range m.Pages {
+		if !page.DateTime.IsZero() && !page.DateTime.Before(oldestDate) {
+			pages = append(pages, *page)
+		}
+	}
+
+	return pages, nil
 }
 
 func (m *MockDatastoreClient) ReadAnalysisResult(ctx context.Context, url, mode string) (*models.AnalysisResult, bool, error) {
