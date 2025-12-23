@@ -1,9 +1,11 @@
 .App {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
   margin: 0;
+  padding: 2rem;
 }
 
 .App h1 {
@@ -12,6 +14,30 @@
     sans-serif;
   font-size: 2.5rem;
   color: #333;
-  margin: 0;
+  margin: 0 0 3rem 0;
+}
+
+.health-status {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+}
+
+.health-status p {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  font-size: 1rem;
+  color: #666;
+  margin: 0.5rem 0;
+}
+
+.health-status .error {
+  color: #d32f2f;
+}
+
+.health-status .health-result {
+  color: #2e7d32;
+  font-weight: 500;
 }
 
