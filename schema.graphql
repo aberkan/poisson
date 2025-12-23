@@ -7,6 +7,9 @@ type Query {
 	
 	# Get crawled page for a URL
 	crawledPage(url: String!): CrawledPage
+	
+	# Get feed of articles ranked by joke confidence
+	feed(maxArticles: Int!, oldestDate: String!, mode: String): [FeedItem!]!
 }
 
 type AnalysisResult {
@@ -23,3 +26,8 @@ type CrawledPage {
 	datetime: String!
 }
 
+type FeedItem {
+	url: String!
+	title: String!
+	jokeConfidence: Int!
+}

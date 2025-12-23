@@ -16,5 +16,11 @@ type CrawledPage struct {
 	Datetime string `json:"datetime"`
 }
 
+type FeedItem struct {
+	URL            string `json:"url"`
+	Title          string `json:"title"`
+	JokeConfidence int    `json:"jokeConfidence"`
+}
+
 type Query struct {
 }

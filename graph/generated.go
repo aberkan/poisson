@@ -5,7 +5,6 @@ package graph
 import (
 	"bytes"
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"strconv"
@@ -59,9 +58,16 @@ type ComplexityRoot struct {
 		URL      func(childComplexity int) int
 	}
 
+	FeedItem struct {
+		JokeConfidence func(childComplexity int) int
+		Title          func(childComplexity int) int
+		URL            func(childComplexity int) int
+	}
+
 	Query struct {
 		Analysis    func(childComplexity int, url string, mode *string) int
 		CrawledPage func(childComplexity int, url string) int
+		Feed        func(childComplexity int, maxArticles int, oldestDate string, mode *string) int
 		Health      func(childComplexity int) int
 	}
 }
@@ -70,6 +76,7 @@ type QueryResolver interface {
 	Health(ctx context.Context) (string, error)
 	Analysis(ctx context.Context, url string, mode *string) (*AnalysisResult, error)
 	CrawledPage(ctx context.Context, url string) (*CrawledPage, error)
+	Feed(ctx context.Context, maxArticles int, oldestDate string, mode *string) ([]*FeedItem, error)
 }
 
 type executableSchema struct {
@@ -141,6 +148,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CrawledPage.URL(childComplexity), true
 
+	case "FeedItem.jokeConfidence":
+		if e.complexity.FeedItem.JokeConfidence == nil {
+			break
+		}
+
+		return e.complexity.FeedItem.JokeConfidence(childComplexity), true
+	case "FeedItem.title":
+		if e.complexity.FeedItem.Title == nil {
+			break
+		}
+
+		return e.complexity.FeedItem.Title(childComplexity), true
+	case "FeedItem.url":
+		if e.complexity.FeedItem.URL == nil {
+			break
+		}
+
+		return e.complexity.FeedItem.URL(childComplexity), true
+
 	case "Query.analysis":
 		if e.complexity.Query.Analysis == nil {
 			break
@@ -163,6 +189,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.CrawledPage(childComplexity, args["url"].(string)), true
+	case "Query.feed":
+		if e.complexity.Query.Feed == nil {
+			break
+		}
+
+		args, err := ec.field_Query_feed_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Feed(childComplexity, args["maxArticles"].(int), args["oldestDate"].(string), args["mode"].(*string)), true
 	case "Query.health":
 		if e.complexity.Query.Health == nil {
 			break
@@ -258,19 +295,41 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema.graphqls"
-var sourcesFS embed.FS
-
-func sourceData(filename string) string {
-	data, err := sourcesFS.ReadFile(filename)
-	if err != nil {
-		panic(fmt.Sprintf("codegen problem: %s not available", filename))
-	}
-	return string(data)
+var sources = []*ast.Source{
+	{Name: "../schema.graphql", Input: `type Query {
+	# Health check endpoint
+	health: String!
+	
+	# Get analysis result for a URL
+	analysis(url: String!, mode: String): AnalysisResult
+	
+	# Get crawled page for a URL
+	crawledPage(url: String!): CrawledPage
+	
+	# Get feed of articles ranked by joke confidence
+	feed(maxArticles: Int!, oldestDate: String!, mode: String): [FeedItem!]!
 }
 
-var sources = []*ast.Source{
-	{Name: "schema.graphqls", Input: sourceData("schema.graphqls"), BuiltIn: false},
+type AnalysisResult {
+	mode: String!
+	jokePercentage: Int
+	jokeReasoning: String
+	promptFingerprint: Int!
+}
+
+type CrawledPage {
+	url: String!
+	title: String!
+	content: String!
+	datetime: String!
+}
+
+type FeedItem {
+	url: String!
+	title: String!
+	jokeConfidence: Int!
+}
+`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -313,6 +372,27 @@ func (ec *executionContext) field_Query_crawledPage_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["url"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_feed_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "maxArticles", ec.unmarshalNInt2int)
+	if err != nil {
+		return nil, err
+	}
+	args["maxArticles"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "oldestDate", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["oldestDate"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "mode", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["mode"] = arg2
 	return args, nil
 }
 
@@ -600,6 +680,93 @@ func (ec *executionContext) fieldContext_CrawledPage_datetime(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _FeedItem_url(ctx context.Context, field graphql.CollectedField, obj *FeedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FeedItem_url,
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FeedItem_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FeedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FeedItem_title(ctx context.Context, field graphql.CollectedField, obj *FeedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FeedItem_title,
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FeedItem_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FeedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FeedItem_jokeConfidence(ctx context.Context, field graphql.CollectedField, obj *FeedItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FeedItem_jokeConfidence,
+		func(ctx context.Context) (any, error) {
+			return obj.JokeConfidence, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FeedItem_jokeConfidence(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FeedItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_health(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -640,7 +807,7 @@ func (ec *executionContext) _Query_analysis(ctx context.Context, field graphql.C
 			return ec.resolvers.Query().Analysis(ctx, fc.Args["url"].(string), fc.Args["mode"].(*string))
 		},
 		nil,
-		ec.marshalOAnalysisResult2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋserverᚋgraphᚐAnalysisResult,
+		ec.marshalOAnalysisResult2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋgraphᚐAnalysisResult,
 		true,
 		false,
 	)
@@ -691,7 +858,7 @@ func (ec *executionContext) _Query_crawledPage(ctx context.Context, field graphq
 			return ec.resolvers.Query().CrawledPage(ctx, fc.Args["url"].(string))
 		},
 		nil,
-		ec.marshalOCrawledPage2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋserverᚋgraphᚐCrawledPage,
+		ec.marshalOCrawledPage2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋgraphᚐCrawledPage,
 		true,
 		false,
 	)
@@ -725,6 +892,55 @@ func (ec *executionContext) fieldContext_Query_crawledPage(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_crawledPage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_feed(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_feed,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().Feed(ctx, fc.Args["maxArticles"].(int), fc.Args["oldestDate"].(string), fc.Args["mode"].(*string))
+		},
+		nil,
+		ec.marshalNFeedItem2ᚕᚖgithubᚗcomᚋzeaceᚋpoissonᚋgraphᚐFeedItemᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_feed(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_FeedItem_url(ctx, field)
+			case "title":
+				return ec.fieldContext_FeedItem_title(ctx, field)
+			case "jokeConfidence":
+				return ec.fieldContext_FeedItem_jokeConfidence(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FeedItem", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_feed_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2395,6 +2611,55 @@ func (ec *executionContext) _CrawledPage(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var feedItemImplementors = []string{"FeedItem"}
+
+func (ec *executionContext) _FeedItem(ctx context.Context, sel ast.SelectionSet, obj *FeedItem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, feedItemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FeedItem")
+		case "url":
+			out.Values[i] = ec._FeedItem_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._FeedItem_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jokeConfidence":
+			out.Values[i] = ec._FeedItem_jokeConfidence(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -2465,6 +2730,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_crawledPage(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "feed":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_feed(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -2856,6 +3143,60 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNFeedItem2ᚕᚖgithubᚗcomᚋzeaceᚋpoissonᚋgraphᚐFeedItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*FeedItem) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFeedItem2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋgraphᚐFeedItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFeedItem2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋgraphᚐFeedItem(ctx context.Context, sel ast.SelectionSet, v *FeedItem) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FeedItem(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3141,7 +3482,7 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) marshalOAnalysisResult2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋserverᚋgraphᚐAnalysisResult(ctx context.Context, sel ast.SelectionSet, v *AnalysisResult) graphql.Marshaler {
+func (ec *executionContext) marshalOAnalysisResult2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋgraphᚐAnalysisResult(ctx context.Context, sel ast.SelectionSet, v *AnalysisResult) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -3178,7 +3519,7 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) marshalOCrawledPage2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋserverᚋgraphᚐCrawledPage(ctx context.Context, sel ast.SelectionSet, v *CrawledPage) graphql.Marshaler {
+func (ec *executionContext) marshalOCrawledPage2ᚖgithubᚗcomᚋzeaceᚋpoissonᚋgraphᚐCrawledPage(ctx context.Context, sel ast.SelectionSet, v *CrawledPage) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

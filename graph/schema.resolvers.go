@@ -8,6 +8,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/zeace/poisson/crawler/analyzer"
 )
@@ -63,8 +64,13 @@ func (r *queryResolver) CrawledPage(ctx context.Context, url string) (*CrawledPa
 		URL:      page.URL,
 		Title:    page.Title,
 		Content:  page.Content,
-		Datetime: page.DateTime.Format("2006-01-02T15:04:05Z07:00"),
+		Datetime: page.DateTime.Format(time.RFC3339),
 	}, nil
+}
+
+// Feed is the resolver for the feed field.
+func (r *queryResolver) Feed(ctx context.Context, maxArticles int, oldestDate string, mode *string) ([]*FeedItem, error) {
+	panic(fmt.Errorf("not implemented: Feed - feed"))
 }
 
 // Query returns QueryResolver implementation.
