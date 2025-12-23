@@ -2,19 +2,5 @@
 
 package graph
 
-type AnalysisResult struct {
-	Mode              string  `json:"mode"`
-	JokePercentage    *int    `json:"jokePercentage,omitempty"`
-	JokeReasoning     *string `json:"jokeReasoning,omitempty"`
-	PromptFingerprint int     `json:"promptFingerprint"`
-}
-
-type CrawledPage struct {
-	URL      string `json:"url"`
-	Title    string `json:"title"`
-	Content  string `json:"content"`
-	Datetime string `json:"datetime"`
-}
-
 type Query struct {
 }

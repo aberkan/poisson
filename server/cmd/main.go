@@ -9,8 +9,8 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/zeace/poisson/graph"
 	"github.com/zeace/poisson/lib"
-	"github.com/zeace/poisson/server/graph"
 )
 
 func main() {

@@ -1,17 +1,8 @@
 package graph
 
-import (
-	"github.com/zeace/poisson/lib"
-)
+// This file will not be regenerated automatically.
+//
+// It serves as dependency injection for your app, add any dependencies you require
+// here.
 
-// Resolver handles GraphQL queries and mutations
-type Resolver struct {
-	datastoreClient lib.DatastoreClient
-}
-
-// NewResolver creates a new resolver instance
-func NewResolver(datastoreClient lib.DatastoreClient) *Resolver {
-	return &Resolver{
-		datastoreClient: datastoreClient,
-	}
-}
+type Resolver struct{}
