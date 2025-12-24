@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { request } from 'graphql-request'
 import '../App.css'
 
@@ -42,6 +43,9 @@ function HomePage() {
         {healthStatus && (
           <p className="health-result">Health Status: {healthStatus}</p>
         )}
+      </div>
+      <div className="home-links">
+        <Link to="/feed" className="feed-link">Go see the feed</Link>
       </div>
     </div>
   )
