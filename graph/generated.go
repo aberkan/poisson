@@ -67,7 +67,7 @@ type ComplexityRoot struct {
 	Query struct {
 		Analysis    func(childComplexity int, url string, mode *string) int
 		CrawledPage func(childComplexity int, url string) int
-		Feed        func(childComplexity int, maxArticles int, oldestDate string, mode *string) int
+		Feed        func(childComplexity int, maxArticles int, oldestDate string, mode string) int
 		Health      func(childComplexity int) int
 	}
 }
@@ -76,7 +76,7 @@ type QueryResolver interface {
 	Health(ctx context.Context) (string, error)
 	Analysis(ctx context.Context, url string, mode *string) (*AnalysisResult, error)
 	CrawledPage(ctx context.Context, url string) (*CrawledPage, error)
-	Feed(ctx context.Context, maxArticles int, oldestDate string, mode *string) ([]*FeedItem, error)
+	Feed(ctx context.Context, maxArticles int, oldestDate string, mode string) ([]*FeedItem, error)
 }
 
 type executableSchema struct {
@@ -199,7 +199,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Feed(childComplexity, args["maxArticles"].(int), args["oldestDate"].(string), args["mode"].(*string)), true
+		return e.complexity.Query.Feed(childComplexity, args["maxArticles"].(int), args["oldestDate"].(string), args["mode"].(string)), true
 	case "Query.health":
 		if e.complexity.Query.Health == nil {
 			break
@@ -307,7 +307,7 @@ var sources = []*ast.Source{
 	crawledPage(url: String!): CrawledPage
 	
 	# Get feed of articles ranked by joke confidence
-	feed(maxArticles: Int!, oldestDate: String!, mode: String): [FeedItem!]!
+	feed(maxArticles: Int!, oldestDate: String!, mode: String!): [FeedItem!]!
 }
 
 type AnalysisResult {
@@ -388,7 +388,7 @@ func (ec *executionContext) field_Query_feed_args(ctx context.Context, rawArgs m
 		return nil, err
 	}
 	args["oldestDate"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "mode", ec.unmarshalOString2ᚖstring)
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "mode", ec.unmarshalNString2string)
 	if err != nil {
 		return nil, err
 	}
@@ -906,7 +906,7 @@ func (ec *executionContext) _Query_feed(ctx context.Context, field graphql.Colle
 		ec.fieldContext_Query_feed,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Feed(ctx, fc.Args["maxArticles"].(int), fc.Args["oldestDate"].(string), fc.Args["mode"].(*string))
+			return ec.resolvers.Query().Feed(ctx, fc.Args["maxArticles"].(int), fc.Args["oldestDate"].(string), fc.Args["mode"].(string))
 		},
 		nil,
 		ec.marshalNFeedItem2ᚕᚖgithubᚗcomᚋzeaceᚋpoissonᚋgraphᚐFeedItemᚄ,

@@ -62,7 +62,7 @@ func analyze(
 	}
 
 	// Check cache in datastore
-	cachedResult, found, err := datastoreClient.ReadAnalysisResult(ctx, page.URL, string(mode))
+	cachedResult, found, err := datastoreClient.ReadAnalysisResult(ctx, page.URL, mode)
 	if err != nil {
 		return nil, fmt.Errorf("error checking analysis cache: %w", err)
 	}

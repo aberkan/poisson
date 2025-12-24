@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/zeace/poisson/crawler/analyzer"
+	"github.com/zeace/poisson/server"
 )
 
 // Health is the resolver for the health field.
@@ -19,20 +20,20 @@ func (r *queryResolver) Health(ctx context.Context) (string, error) {
 }
 
 // Analysis is the resolver for the analysis field.
-func (r *queryResolver) Analysis(ctx context.Context, url string, mode *string) (*AnalysisResult, error) {
-	modeStr := "joke"
-	if mode != nil {
-		modeStr = *mode
+func (r *queryResolver) Analysis(ctx context.Context, url string, modeStr *string) (*AnalysisResult, error) {
+	if modeStr == nil {
+		var joke string = "joke"
+		modeStr = &joke
 	}
 
 	// Verify mode is valid
-	_, err := analyzer.VerifyValidMode(modeStr)
+	mode, err := analyzer.VerifyValidMode(*modeStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid mode: %v", err)
 	}
 
 	// Read from datastore
-	result, found, err := r.datastoreClient.ReadAnalysisResult(ctx, url, modeStr)
+	result, found, err := r.datastoreClient.ReadAnalysisResult(ctx, url, mode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read analysis result: %v", err)
 	}
@@ -69,8 +70,36 @@ func (r *queryResolver) CrawledPage(ctx context.Context, url string) (*CrawledPa
 }
 
 // Feed is the resolver for the feed field.
-func (r *queryResolver) Feed(ctx context.Context, maxArticles int, oldestDate string, mode *string) ([]*FeedItem, error) {
-	panic(fmt.Errorf("not implemented: Feed - feed"))
+func (r *queryResolver) Feed(ctx context.Context, maxArticles int, oldestDate string, mode string) ([]*FeedItem, error) {
+	// Parse oldestDate string to time.Time
+	parsedDate, err := time.Parse(time.DateOnly, oldestDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid date format: %v (expected RFC3339)", err)
+	}
+
+	// Verify mode is valid
+	_, err = analyzer.VerifyValidMode(mode)
+	if err != nil {
+		return nil, fmt.Errorf("invalid mode: %v", err)
+	}
+
+	// Call GetFeed from server package
+	feedItems, err := server.GetFeed(ctx, r.datastoreClient, maxArticles, parsedDate, mode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get feed: %v", err)
+	}
+
+	// Convert server.FeedItem to graph.FeedItem
+	result := make([]*FeedItem, len(feedItems))
+	for i, item := range feedItems {
+		result[i] = &FeedItem{
+			URL:            item.URL,
+			Title:          item.Title,
+			JokeConfidence: item.JokeConfidence,
+		}
+	}
+
+	return result, nil
 }
 
 // Query returns QueryResolver implementation.

@@ -559,7 +559,7 @@ func TestAnalyze_DatastoreCacheHit(t *testing.T) {
 		JokeReasoning:     stringPtr("This is a test reasoning"),
 		PromptFingerprint: expectedFingerprint,
 	}
-	mockDS.AnalysisResults[pageURL+":joke"] = cachedResult
+	mockDS.AnalysisResults[lib.UrlToAnalysisKey(pageURL, AnalysisModeJoke)] = cachedResult
 
 	page := &models.CrawledPage{
 		URL:     pageURL,
@@ -600,7 +600,7 @@ func TestAnalyze_DatastoreCacheHit_MismatchedFingerprint(t *testing.T) {
 		JokeReasoning:     stringPtr("Old reasoning"),
 		PromptFingerprint: 999999, // Wrong fingerprint
 	}
-	mockDS.AnalysisResults[pageURL+":joke"] = cachedResult
+	mockDS.AnalysisResults[lib.UrlToAnalysisKey(pageURL, AnalysisModeJoke)] = cachedResult
 
 	page := &models.CrawledPage{
 		URL:     pageURL,
@@ -721,11 +721,7 @@ func TestAnalyze_DatastoreWriteSuccess(t *testing.T) {
 		t.Fatalf("Failed to generate fingerprint: %v", err)
 	}
 
-	page := &models.CrawledPage{
-		URL:     "example.com/new-article",
-		Title:   "New Article",
-		Content: "New content",
-	}
+	url := "example.com/new-article"
 
 	// Since we can't easily mock the LLM, we'll manually test the datastore write
 	// by creating a result and saving it
@@ -736,13 +732,13 @@ func TestAnalyze_DatastoreWriteSuccess(t *testing.T) {
 		PromptFingerprint: expectedFingerprint,
 	}
 
-	err = mockDS.WriteAnalysisResult(ctx, page.URL, result)
+	err = mockDS.WriteAnalysisResult(ctx, url, result)
 	if err != nil {
 		t.Fatalf("CreateAnalysisResult() error = %v, want nil", err)
 	}
 
 	// Verify it was saved
-	savedResult, found, err := mockDS.ReadAnalysisResult(ctx, page.URL, "joke")
+	savedResult, found, err := mockDS.ReadAnalysisResult(ctx, url, "joke")
 	if err != nil {
 		t.Fatalf("GetAnalysisResult() error = %v, want nil", err)
 	}

@@ -9,7 +9,7 @@ type Query {
 	crawledPage(url: String!): CrawledPage
 	
 	# Get feed of articles ranked by joke confidence
-	feed(maxArticles: Int!, oldestDate: String!, mode: String): [FeedItem!]!
+	feed(maxArticles: Int!, oldestDate: String!, mode: String!): [FeedItem!]!
 }
 
 type AnalysisResult {

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/zeace/poisson/crawler/analyzer"
 	"github.com/zeace/poisson/lib"
 )
 
@@ -23,10 +24,14 @@ func GetFeed(
 	datastoreClient lib.DatastoreClient,
 	maxArticles int,
 	oldestDate time.Time,
-	mode string,
+	modeStr string,
 ) ([]FeedItem, error) {
 	// Get all CrawledPages since oldestDate
 	pages, err := datastoreClient.GetCrawledPagesSince(ctx, oldestDate)
+	if err != nil {
+		return nil, err
+	}
+	mode, err := analyzer.VerifyValidMode(modeStr)
 	if err != nil {
 		return nil, err
 	}
