@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log"
 	"sort"
 	"time"
 
@@ -31,6 +32,7 @@ func GetFeed(
 	if err != nil {
 		return nil, err
 	}
+
 	mode, err := analyzer.VerifyValidMode(modeStr)
 	if err != nil {
 		return nil, err
@@ -43,9 +45,11 @@ func GetFeed(
 		// Try to get analysis result for the specified mode
 		analysis, found, err := datastoreClient.ReadAnalysisResult(ctx, page.URL, mode)
 		if err != nil {
+			log.Printf("GetFeed %v error reading analysis result for page %v: %v", oldestDate, page.URL, err)
 			continue // Skip on error
 		}
-		if !found || analysis.JokePercentage == nil {
+		if !found || analysis == nil || analysis.JokePercentage == nil {
+			log.Printf("GetFeed %v no analysis result or no joke percentage for page %v", oldestDate, page.URL)
 			continue // Skip if no analysis or no joke percentage
 		}
 

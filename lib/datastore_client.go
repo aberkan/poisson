@@ -109,7 +109,7 @@ func (d *datastoreClientAdapter) WriteCrawledPage(ctx context.Context, url, titl
 // GetCrawledPagesSince returns all CrawledPages with DateTime >= oldestDate.
 func (d *datastoreClientAdapter) GetCrawledPagesSince(ctx context.Context, oldestDate time.Time) ([]models.CrawledPage, error) {
 	query := d.client.Collection(models.CrawledPageKind).
-		Where("datetime", ">=", oldestDate)
+		Where("DateTime", ">=", oldestDate).OrderBy("DateTime", firestore.Desc)
 
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
