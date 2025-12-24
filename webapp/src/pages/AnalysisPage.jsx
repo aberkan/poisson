@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { request } from 'graphql-request'
 import '../App.css'
 
@@ -77,10 +77,20 @@ function AnalysisPage() {
     )
   }
 
+  // Ensure URL is absolute (not relative)
+  const absoluteUrl = url && (url.startsWith('http://') || url.startsWith('https://')) 
+    ? url 
+    : `https://${url}`
+
   return (
     <div className="App">
-      <h1>Analysis for URL</h1>
-      <p className="url-display">URL: {url}</p>
+      <div className="analysis-header">
+        <Link to="/feed" className="back-to-feed-button">← Back to feed</Link>
+        <h1>Analysis for URL</h1>
+      </div>
+      <p className="url-display">
+        URL: <a href={absoluteUrl} target="_blank" rel="noopener noreferrer">{url}</a>
+      </p>
 
       {loading && <p>Loading...</p>}
       

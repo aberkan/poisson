@@ -62,6 +62,15 @@
   margin-bottom: 2rem;
 }
 
+.url-display a {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.url-display a:hover {
+  text-decoration: underline;
+}
+
 .info-box {
   background-color: #f5f5f5;
   border: 1px solid #ddd;
@@ -202,6 +211,33 @@
 .feed-url a:hover {
   color: #1976d2;
   text-decoration: underline;
+}
+
+.analysis-header {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.back-to-feed-button {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background-color: #f5f5f5;
+  color: #333;
+  text-decoration: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.back-to-feed-button:hover {
+  background-color: #e0e0e0;
+  border-color: #bbb;
+  text-decoration: none;
 }
 
 .home-links {
